@@ -1,0 +1,810 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [448, -48],
+      "id": "247f1178-851e-4531-8d09-326246825eca",
+      "name": "merge threads"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- CONFIGURATION ---\nSET MAX_HISTORY = 3\nSET FOLLOW_UP_DAYS = 7\nSET COLLECTION = Empty Map\n\n// --- HELPER FUNCTIONS ---\n\nFUNCTION NormalizeEmails(input)\n    IF input is empty RETURN []\n    IF input is list\n        RETURN clean and lowercase each item\n    IF input is string\n        SPLIT string by delimiters (comma, newline, space)\n        RETURN cleaned and lowercased list\n    RETURN []\n\nFUNCTION FindInternalUser(email)\n    TARGET = lowercase email\n    FOR EACH user IN GlobalUserList\n        EMAILS = NormalizeEmails(user.email_field)\n        IF TARGET exists in EMAILS\n            RETURN user object\n    RETURN NULL\n\nFUNCTION CleanMessageBody(text)\n    IF text is empty RETURN \"\"\n    REMOVE everything after \"On ... wrote:\"\n    REMOVE everything after signature separator \"--\"\n    REMOVE lines starting with \">\"\n    RETURN trimmed text\n\n// --- MAIN PROCESSING ---\n\n// 1. Load Existing State\nFOR EACH record IN DatabaseRecords\n    THREAD_ID = record.id\n    IF THREAD_ID exists\n        INITIALIZE collection[THREAD_ID] with record data\n        ENSURE message_history is an array\n\n// 2. Process Incoming Messages\nFOR EACH message IN NewMessages\n    THREAD_ID = message.thread_id\n    IF THREAD_ID is missing CONTINUE\n    \n    // Identify internal vs external participants\n    SENDER_INTERNAL = FindInternalUser(message.sender)\n    RECIPIENT_INTERNAL = FindInternalUser(message.recipient)\n    \n    // Skip if no internal staff/agent is involved\n    IF SENDER_INTERNAL is null AND RECIPIENT_INTERNAL is null\n        CONTINUE\n\n    // Determine roles\n    IF SENDER_INTERNAL exists\n        STAFF_DATA = SENDER_INTERNAL\n        EXTERNAL_EMAIL = message.recipient\n    ELSE\n        STAFF_DATA = RECIPIENT_INTERNAL\n        EXTERNAL_EMAIL = message.sender\n\n    // Upsert Thread into Collection\n    IF THREAD_ID NOT IN COLLECTION\n        CREATE new thread entry:\n            Set initial timestamps\n            Set status to \"NEW_LEAD\"\n            Set history = [message.body]\n            Set follow_up_date = message.date + FOLLOW_UP_DAYS\n    ELSE\n        THREAD = COLLECTION[THREAD_ID]\n        \n        // Update Timeline\n        IF message.date < THREAD.start_date\n            THREAD.start_date = message.date\n        IF message.date > THREAD.end_date\n            THREAD.end_date = message.date\n            \n        // Append cleaned content\n        CLEANED_BODY = CleanMessageBody(message.body)\n        APPEND CLEANED_BODY TO THREAD.history\n\n// 3. Final Validation and Follow-up Logic\nFOR EACH thread IN COLLECTION\n    COUNT = thread.history.length\n    \n    // Manage history size and AI flags\n    IF COUNT > MAX_HISTORY\n        TRUNCATE history to last [MAX_HISTORY] items\n        IF COUNT > 1 \n            SET needs_ai_processing = TRUE\n            \n    // Schedule next contact\n    IF thread.follow_up_count < 3\n        IF thread.last_message_date exists\n            SET thread.follow_up_date = CURRENT_TIME + FOLLOW_UP_DAYS\n    ELSE\n        SET thread.follow_up_date = NULL\n\nRETURN COLLECTION as List"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [448, 192],
+      "id": "30b0a26a-2e9a-4287-8853-5ec10f5b50dc",
+      "name": "structures messages"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- DATA PREPARATION ---\nSET CURRENT_ITEM = First item from the processing queue\nSET CLASSIFICATION_RESULT = Output from the AI Classifier\nSET AGENT_REGISTRY = List of all internal agents and their specific Tag IDs\n\n// --- MAPPING FUNCTION ---\nFUNCTION GetSystemTagID(category_name, agent_email)\n    FOR EACH agent IN AGENT_REGISTRY\n        // Match the message owner to the agent record\n        IF agent_email MATCHES agent.email\n            // Map the human-readable category to the specific database ID\n            SWITCH category_name\n                CASE \"HIGH_INTEREST\": RETURN agent.hot_tag_id\n                CASE \"ENGAGED\":      RETURN agent.potential_tag_id\n                CASE \"DISINTERESTED\": RETURN agent.non_target_tag_id\n                CASE \"NEW_INQUIRY\":   RETURN agent.fresh_lead_tag_id\n    \n    RETURN EMPTY_STRING // Fallback if no match found\n\n// --- MAIN EXECUTION ---\nSET SELECTED_CATEGORY = CLASSIFICATION_RESULT.decision\nSET OWNER_AGENT = CURRENT_ITEM.agent_email\nSET EXISTING_TAG = CURRENT_ITEM.current_tag_id\n\n// 1. Preserve History\nIF EXISTING_TAG IS NOT EMPTY\n    SET CURRENT_ITEM.previous_tag_id = EXISTING_TAG\n\n// 2. Update Status\nSET CURRENT_ITEM.status = SELECTED_CATEGORY\n\n// 3. Assign New Database ID\nSET NEW_TAG_ID = GetSystemTagID(SELECTED_CATEGORY, OWNER_AGENT)\nSET CURRENT_ITEM.current_tag_id = NEW_TAG_ID\n\n// --- FINALIZATION ---\nRETURN Updated Items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [448, 800],
+      "id": "5f9dcd31-3309-40b4-954e-011151c2b38a",
+      "name": "update status"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "maxTokensToSample": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [64, 1024],
+      "id": "079c63dc-f3db-4af1-ba3f-615fac6c9c52",
+      "name": "gpt 120b",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [160, 1024],
+      "id": "2ba7f2c1-4f3e-45b9-8127-11b013511f55",
+      "name": "gpt 20b",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [256, 1152],
+      "id": "7eca791c-0c56-4a2c-b028-bf51af0f9154",
+      "name": "gemma",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "59 11,23 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [432, -256],
+      "id": "15dbeb09-12fd-4b49-b624-e338607738c0",
+      "name": "schedule trigger"
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-320, -64],
+      "id": "9350e6ff-24a8-493a-bfe8-ac219b68cfae",
+      "name": "get threads email1",
+      "webhookId": "eb325c32-e372-42fe-8043-b0545cb29511",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-128, -32],
+      "id": "b6e798de-db93-4034-ad59-e1db13862391",
+      "name": "get threads email2",
+      "webhookId": "8ceec3a8-ca75-480f-b94e-e98e70e7af7d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [64, 0],
+      "id": "4ab024ee-c87b-46ce-8a41-c59847e94069",
+      "name": "get threads email3",
+      "webhookId": "bc38f232-62e2-48d9-b1ac-ff5033285d18",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [256, 32],
+      "id": "94934605-ef8e-4c0b-a89e-328d4ac2efa6",
+      "name": "get threads email4",
+      "webhookId": "2c6d4fc7-9d9b-4f1b-a642-032ae35713f8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "value": "ga4-cenix",
+          "mode": "list",
+          "cachedResultName": "GA4-CENIX",
+          "cachedResultUrl": "https://console.cloud.google.com/bigquery?project=ga4-cenix"
+        },
+        "sqlQuery": "SELECT *\nFROM `project`",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2.1,
+      "position": [-320, 192],
+      "id": "fb28d853-8d7e-4b35-9c0f-19b37eccc4da",
+      "name": "query messages",
+      "credentials": {
+        "googleBigQueryOAuth2Api": {
+          "id": "nL43QKIB2z9XbsuU",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e60a3fed-aa6c-4f5d-b503-3f6d0e6bd4da",
+              "leftValue": "={{ $json.from_email_address }}",
+              "rightValue": "reminders@mailsuite.com",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [-128, 192],
+      "id": "0eaf8f23-9064-4aae-927e-2774c541ec04",
+      "name": "filter"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [64, 192],
+      "id": "0f82884e-dd90-45d3-a313-612df379a422",
+      "name": "get existing emails",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [256, 192],
+      "id": "a2fb29ad-77dc-4fc8-9b25-51e63333175e",
+      "name": "get agents list",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "643bf179-dc2e-44c6-a210-c0026ef9a3f5",
+              "leftValue": "={{ $json.isNeedAI }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-320, 400],
+      "id": "dae36578-7dd0-4690-8088-693d3f136734",
+      "name": "if need AI?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [64, 400],
+      "id": "f9b45016-08ef-4aee-a526-41f0cb6fc360",
+      "name": "merge email classification"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22e4fa52-4357-4cc2-9fe6-a45e8ae58eb2",
+              "name": "thread_id",
+              "value": "={{ $json.thread_id }}",
+              "type": "string"
+            },
+            {
+              "id": "fcc1ee60-36e0-4153-99a0-23bc1444ac87",
+              "name": "label_id",
+              "value": "={{ $json.label_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b2b31f6f-18f1-4441-affb-30cc5d788b50",
+              "name": "old_label_id",
+              "value": "={{ $json.old_label_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5a0f5482-98d9-42b1-a20f-8521c07e39ca",
+              "name": "agent",
+              "value": "={{ $json.agent }}",
+              "type": "string"
+            },
+            {
+              "id": "11f07d2d-4206-4223-826c-48b419fd12cf",
+              "name": "first_message_date",
+              "value": "={{ $json.first_message_date }}",
+              "type": "string"
+            },
+            {
+              "id": "b6b94740-e969-4ed7-846a-c1d0f194822b",
+              "name": "last_message_date",
+              "value": "={{ $json.last_message_date }}",
+              "type": "string"
+            },
+            {
+              "id": "e6ad4397-3ec1-4a78-bd36-b51ab5894fdd",
+              "name": "recipient_email",
+              "value": "={{ $json.recipient_email }}",
+              "type": "string"
+            },
+            {
+              "id": "c5c077cb-eacb-4abf-a039-8a83d0941375",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "f3eeb8c0-167c-4bdf-beb0-cac48051d563",
+              "name": "message_count",
+              "value": "={{ $json.message_count }}",
+              "type": "number"
+            },
+            {
+              "id": "6d6f400b-f81a-4a1f-98a2-ff3074eb5b2b",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "6bf441e6-338b-4bef-8fdc-3644ed683ea0",
+              "name": "last_classified_date",
+              "value": "={{ $json.last_classified_date || \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "2594090f-4ac8-4c92-9031-b65f5015a679",
+              "name": "follow_up_date",
+              "value": "={{ $json.follow_up_date }}",
+              "type": "string"
+            },
+            {
+              "id": "6cec497b-8d56-4e3c-bdea-e07fc7cdbeeb",
+              "name": "follow_up_count",
+              "value": "={{ $json.follow_up_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [256, 400],
+      "id": "93cfe37c-c720-42d4-97b2-add5b6cf48cb",
+      "name": "format column names"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "VczNdDH0cEfUORdz",
+          "cachedResultName": "[SUB] email-auto-labeler-automation-v5/remove-add-labels-v1.0.0"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [448, 400],
+      "id": "e25465ca-879f-4d6d-bc7d-99ad8695b1c7",
+      "name": "labels action"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [448, 608],
+      "id": "ad809a3f-67b3-4515-85ea-0411cb604b7d",
+      "name": "update email records",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "AlznXy4VxdyG2hna",
+          "name": "czechlouie"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-320, 608],
+      "id": "10e5e47a-10e1-4195-86a2-af8912e79544",
+      "name": "loop over items"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-80, 800],
+      "id": "4e07df78-0bba-4e05-86af-c68749978382",
+      "name": "wait 30 secs",
+      "webhookId": "4f124ceb-d778-47b7-ad77-e00acd1c9bfb"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<system>\n</system\n\n<conversation>\n</conversation>\n\n<context>\n</context>\n\n<categories>\n</categories>\n\n<rules>\n</rules>\n\n<output>\n</output>\n\n<example>\n</example>",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [96, 800],
+      "id": "9f9021f3-9328-4dec-89bd-eab44fa8c414",
+      "name": "classifier agent"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"decision\": \"string\",\n    \"reason\": \"string\"\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [256, 1024],
+      "id": "7c0d432b-446f-47ed-a26f-163aaa0286f6",
+      "name": "structured output parser"
+    }
+  ],
+  "connections": {
+    "merge threads": {
+      "main": [
+        [
+          {
+            "node": "query messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structures messages": {
+      "main": [
+        [
+          {
+            "node": "if need AI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update status": {
+      "main": [
+        [
+          {
+            "node": "loop over items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt 120b": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "classifier agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt 20b": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "classifier agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "gemma": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "structured output parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "schedule trigger": {
+      "main": [
+        [
+          {
+            "node": "get threads email4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get threads email3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get threads email2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get threads email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get threads email1": {
+      "main": [
+        [
+          {
+            "node": "merge threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get threads email2": {
+      "main": [
+        [
+          {
+            "node": "merge threads",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "get threads email3": {
+      "main": [
+        [
+          {
+            "node": "merge threads",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "get threads email4": {
+      "main": [
+        [
+          {
+            "node": "merge threads",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "query messages": {
+      "main": [
+        [
+          {
+            "node": "filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter": {
+      "main": [
+        [
+          {
+            "node": "get existing emails",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get threads email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get existing emails": {
+      "main": [
+        [
+          {
+            "node": "get agents list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get agents list": {
+      "main": [
+        [
+          {
+            "node": "structures messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if need AI?": {
+      "main": [
+        [
+          {
+            "node": "merge email classification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "loop over items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge email classification": {
+      "main": [
+        [
+          {
+            "node": "format column names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format column names": {
+      "main": [
+        [
+          {
+            "node": "labels action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "labels action": {
+      "main": [
+        [
+          {
+            "node": "update email records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop over items": {
+      "main": [
+        [
+          {
+            "node": "merge email classification",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "wait 30 secs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait 30 secs": {
+      "main": [
+        [
+          {
+            "node": "classifier agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "classifier agent": {
+      "main": [
+        [
+          {
+            "node": "update status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structured output parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "classifier agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "9cadf9e947af7c573164cc8d7276a61ac5fedcd1324e7db8c350e0deb6ca4620"
+  }
+}
