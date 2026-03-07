@@ -1,0 +1,2281 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "maxOutputTokens": 2048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-768, 928],
+      "id": "1b45764d-02d9-47c4-a8a6-cc8e80eb85dc",
+      "name": "gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3EbDUFrNRAoUQPpw",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-656, 928],
+      "id": "01336275-da36-4d14-a5ca-d213e15b3f3c",
+      "name": "qwen",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "maxTokensToSample": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-560, 1088],
+      "id": "527ff656-1bc8-4b7e-91e3-21a98826b7aa",
+      "name": "llama instant",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-1440, 80],
+      "id": "82b1fa47-a921-4b99-9472-c8c2206157cb",
+      "name": "loop over emails"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- VARIABLES ---\nconst data = $input.all()\nconst count = {\n  \"latin\": 0,\n  \"general\": 0,\n  \"european\": 0,\n  \"asian\": 0,\n  \"foreignladies\": 0,\n}\nconst draft = []\nconst defaultLimit = 15\nconst regionLimits = {\n  \"latin\": 30,\n}\n\n// --- FUNCTIONS ---\nfunction getFirstName(name) {\n if (name) {\n   const parts = name.trim().split(/\\s+/)\n   return parts [0]\n } \n  return \"\"\n}\n\nfunction monthYearExtractor(timestamp) {\n  if (!timestamp) return \"\";\n  \n  // 1. Get the date part (handle both space and 'T' separators)\n  // 2. Normalize dashes to slashes\n  const datePart = timestamp.split(/[T ]/)[0].replace(/-/g, '/');\n  \n  // 3. Remove the middle section (the day)\n  // This looks for: slash -> digits -> slash AND replaces with: slash\n  return datePart.replace(/\\/\\d{1,2}\\//, '/');\n}\n\nfunction regionSelector(region, currentRegionCount) {\n  if (region == 'latin') {\n    // Alternates based on whether the count is even or odd\n    return (currentRegionCount % 2 === 0) ? \"First Latin Name\" : \"Second Latin Name\";\n  }\n  if (region == 'asian') return \"Corazon Dela Cruz\"\n  if (region == 'general') return \"Maria Wilson\"\n  if (region == 'european') return \"Anya Volkova\"\n  if (region == 'foreignladies') return \"Amelia Johansson\"\n}\n\n// --- MAIN ---\nfor (const item of data) {\n  const region = String(item.json.region).trim().toLowerCase()\n  const isDuplicate = item.json.is_duplicate\n  const draftDate = item.json.draft_date\n  const leadEmail = item.json.lead_email\n  const leadName = item.json.lead_name\n  const FBGroup = item.json.facebook_group\n  const leadSource = item.json.lead_source\n  const remarks = item.json.remarks\n  const website = item.json.website\n  const rowNumber = item.json.row_number\n  const isResponded = item.json.is_responded\n  const uid = item.json.uid\n  // Splits at EITHER a 'T' or a space\n  const timestamp = item.json.timestamp;\n  \n  if (isDuplicate || draftDate != \"\") {\n    continue\n  }\n\n  if (isResponded) {\n    continue\n  }\n\n  const currentLimit = regionLimits[region] || defaultLimit;\n  \n  if (region in count && monthYearExtractor(timestamp) === \"12/2025\" && count[region] < currentLimit){\n    console.log(monthYearExtractor(timestamp))\n    draft.push({\n      json: {\n        email: item.json.lead_email,\n        agentName: regionSelector(region, count[region]),\n        firstName: getFirstName(leadName),\n        leadName: leadName,\n        FBGroup: FBGroup,\n        leadSource: leadSource,\n        leadEmail: leadEmail,\n        remarks: remarks,\n        region: region,\n        url: website,\n        row: rowNumber,\n        uid: uid,\n        timestamp: timestamp\n      }\n    })\n    count[region] += 1\n  }\n}\n\n// --- RETURN ---\nreturn draft"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1616, 80],
+      "id": "8452203c-0a99-43f7-9c14-b0e9529b5093",
+      "name": "set variables"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "055fdd44-ed5d-455a-b4f2-2a978bc9609a",
+              "leftValue": "={{ $json.FBGroup }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "45e7dd16-f520-466b-b1e3-3b7fef109ca2",
+              "leftValue": "={{ $json.leadSource }}",
+              "rightValue": "Facebook Groups",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1264, 176],
+      "id": "83976f03-7be0-45ab-af14-714f48ed6460",
+      "name": "check if fbgroup"
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "value": "ga4-cenix",
+          "mode": "list",
+          "cachedResultName": "GA4-CENIX",
+          "cachedResultUrl": "https://console.cloud.google.com/bigquery?project=ga4-cenix"
+        },
+        "sqlQuery": "SELECT to_email_address FROM `ga4-cenix.email_marketing.gmail_messages`",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2.1,
+      "position": [-2320, 64],
+      "id": "c0b109dc-e855-4515-9f67-c3dfc8f222d6",
+      "name": "check if email sent",
+      "executeOnce": true,
+      "credentials": {
+        "googleBigQueryOAuth2Api": {
+          "id": "nL43QKIB2z9XbsuU",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const PET = $(\"get rows in email tracker\").all()\nconst db = $input.all()\n\n// 1. Create a Set of all emails in the database for O(1) lookup speed\nconst existingEmails = new Set(\n  db.map(e => e.json.to_email_address).filter(Boolean)\n);\n\n// 2. Filter the PET list and map to the desired output format\nreturn PET\n  .filter(item => {\n    const email = item.json.lead_email;\n    return email != null && !existingEmails.has(email);\n  })        \n  .map(item => ({ email: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2144, 64],
+      "id": "a355bdb1-9d62-464f-938a-61d772db6868",
+      "name": "check if email sent in db"
+    },
+    {
+      "parameters": {
+        "options": {
+          "maxOutputTokens": 2048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-800, 384],
+      "id": "7c2f3a6b-4853-43b5-b90c-9015727fb8f0",
+      "name": "gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3EbDUFrNRAoUQPpw",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-688, 384],
+      "id": "d03a86ab-2893-4a51-9dc2-47f56328f8bf",
+      "name": "qwen1",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "maxTokensToSample": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-592, 544],
+      "id": "1d8dc402-6653-43ec-afec-66cd6f54e965",
+      "name": "llama instant1",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f228d57f-802a-4205-a08c-bfad84b24e7e",
+              "leftValue": "={{ $json.leadSource }}",
+              "rightValue": "Livechat DM",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-1088, 160],
+      "id": "a6ed71ef-ceb3-467e-b438-f8d0d3073305",
+      "name": "check if live chat"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4,13 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-2672, 64],
+      "id": "3722acfe-5512-40b6-9e4f-46a09468036e",
+      "name": "schedule trigger2"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11CwmbkQO8gqUUriKzgGNXkk3pyogDc17WAmBvwIpJNo",
+          "mode": "list",
+          "cachedResultName": "Lead Generation Centralized Masterlist (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11CwmbkQO8gqUUriKzgGNXkk3pyogDc17WAmBvwIpJNo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 233435421,
+          "mode": "list",
+          "cachedResultName": "personalized_email_tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11CwmbkQO8gqUUriKzgGNXkk3pyogDc17WAmBvwIpJNo/edit#gid=233435421"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-2496, 64],
+      "id": "9cdeb8a3-0204-4f72-9eff-4d7e2920f2b1",
+      "name": "get rows in email tracker",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e4b2913e-c71c-4125-988c-5a01f6a98725",
+              "name": "lead_email",
+              "value": "={{ $json.email.json.lead_email }}",
+              "type": "string"
+            },
+            {
+              "id": "b03cd958-c75b-4866-873e-ff2f8c5d3032",
+              "name": "region",
+              "value": "={{ $json.email.json.region }}",
+              "type": "string"
+            },
+            {
+              "id": "2691d801-72ba-4d08-8a5b-d4128d1ec013",
+              "name": "lead_name",
+              "value": "={{ $json.email.json.lead_name }}",
+              "type": "string"
+            },
+            {
+              "id": "2ffbf9a0-7a57-4f22-91c2-19f634b54ee0",
+              "name": "facebook_group",
+              "value": "={{ $json.email.json.facebook_group }}",
+              "type": "string"
+            },
+            {
+              "id": "75e88b38-8334-4ee1-a701-8b8c5b9c8733",
+              "name": "timestamp",
+              "value": "={{ $json.email.json.timestamp}}",
+              "type": "string"
+            },
+            {
+              "id": "1940b756-c448-477b-92dc-425a42f9a3c3",
+              "name": "is_duplicate",
+              "value": "={{ $json.email.json.is_duplicate }}",
+              "type": "boolean"
+            },
+            {
+              "id": "1d3d42b8-6023-4ce0-a091-d799e3ad458e",
+              "name": "lead_source",
+              "value": "={{ $json.email.json.lead_source }}",
+              "type": "string"
+            },
+            {
+              "id": "0e3e3b21-77bd-41c1-a167-f30ea49743c6",
+              "name": "remarks",
+              "value": "={{ $json.email.json.remarks }}",
+              "type": "string"
+            },
+            {
+              "id": "07182ab9-1a73-4e6e-ab0f-b38ae286986c",
+              "name": "website",
+              "value": "={{ $json.email.json.website }}",
+              "type": "string"
+            },
+            {
+              "id": "b8f78492-1d2d-4306-9efc-dc1bce0be45d",
+              "name": "row_number",
+              "value": "={{ $json.email.json.row_number }}",
+              "type": "number"
+            },
+            {
+              "id": "cd6a6d12-5c34-412d-9b9c-c9542ca3386a",
+              "name": "is_responded",
+              "value": "={{ $json.email.json.is_responded }}",
+              "type": "string"
+            },
+            {
+              "id": "9e79ed21-68ab-4c23-83bc-84d9cab96b79",
+              "name": "uid",
+              "value": "={{ $json.email.json.uid }}",
+              "type": "string"
+            },
+            {
+              "id": "41e16708-35de-4a38-a2d8-acaa27531740",
+              "name": "draft_date",
+              "value": "={{ $json.email.json.welcome_email_drafted }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1968, 64],
+      "id": "2a021cea-8433-45da-8aa0-2a7ef10edc02",
+      "name": "rename columns"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "275fcf0f-d2ee-4e17-9cf8-c87e2797aedd",
+              "name": "type",
+              "value": "all",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-2320, 256],
+      "id": "6d74b99a-3723-4a28-bded-3dd3aa214805",
+      "name": "initialized type"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uWsoepschpMryQLr",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uWsoepschpMryQLr",
+          "cachedResultName": "[SUB] welcome-email-fresh-lead-automation-v4.0.0/extracts-data-from-email-tracker-v1.0.0"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "={{ $json.type }}"
+          },
+          "matchingColumns": ["type"],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [-2144, 256],
+      "id": "ed573670-9f62-41ad-9991-f183d00faeca",
+      "name": "extracts data from tracker workflow"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "lead_email",
+              "field2": "Lead Email"
+            }
+          ]
+        },
+        "joinMode": "keepNonMatches",
+        "outputDataFrom": "input1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-1792, 80],
+      "id": "bd63d93b-f391-4744-8e99-409c0cb192ca",
+      "name": "merge emails"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- VARIABLE ---\nconst items = $input.all()\nconst cards = $('loop over emails').all()\nconst item = items[0]\nconst card = cards[0]\n\n// --- MAIN ---\nconst subject = item.json.output.subject\nconst body = item.json.output.body\nconst isGroup = item.json.output.is_group\nconst email = card.json.email\nconst firstName = card.json.firstName\nconst agentName = card.json.agentName\nconst row = card.json.row\nconst uid = card.json.uid\nconst leadName = card.json.leadName\nconst FBGroup = card.json.FBGroup\nconst url = card.json.url\nconst footnote = item.json.output.footnote\n\nconst result = [{\n  json: {\n    subject: subject,\n    body: body,\n    footnote: footnote,\n    isGroup: isGroup,\n    email: email,\n    firstName: firstName,\n    fullName: leadName,\n    agentName: agentName,\n    url: url,\n    FBGroup: FBGroup,\n    row: row,\n    uid: uid,\n  }\n}]\n\n// --- RETURN ---\nreturn result"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-144, 1072],
+      "id": "2ed52bf0-5c83-49ba-afad-1f4432039533",
+      "name": "separates subject and body"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an email marketing assistant and create the welcome emails with the provided information:\n\nagent_name: {{ $json.agentName }}\nfirst_name: {{ $json.firstName }}\nfootnote: Sincerely,\\n<agentName>\\nClient Relations Team\\nA Foreign Affair\nremarks: {{ $json.remarks }}\nurl: {{ $json.url }}\nregion: {{ $json.region }}\nis_group: false\n\n",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=# ROLE:\nYou are a email marketing assistant that mainly work on making Welcome Emails Campaign for new clients. You create emails that creates engaging and connecting to clients.\n\n# INPUT\n## agent_name: The agent's name which emails the client.\n## first_name: The first name of the client.\n## region: The location category of the client.\n## remarks: Comments or inquiries of the client.\n## footnote: The footnote template.\n## url: The link in which he is likely interested.\n## is_group: Flag for the workflow\n## subject_template: \"<name>, thank you for connecting on Live Chat\"\n## body_template: \"Hello <name>,<br>This is <agent name> from <website>. It's nice to meet you.\\nMay I ask? <question>\"\n\n# TASK\n## 1. Change the <name> in subject template and body_template with the first_name\n## 2. Change the <agent_name> and <website> in body_template with agent_name and url respectively.\n## 3. Then try to ask question regarding the remarks, if not empty, then replace the <question> in the body_template. If remarks is empty, then just use this as the question \"Are you still interested in romantic connections with <region> women?\" and change <region> with the region.\n## 4. Change only the <agent_name> in the footnote template. Do not change anything else.\n## 5. Output both the subject title and the body in **HTML** format and is_group.\n\n# EXAMPLE (do not copy)\n<sample>\n\n# CONSTRAINTS\n## Always refer to the input provided and never generate unrelevant context.\n## Make it sound human and natural\n## Keep the tone conversational\n## Try not to talk too much\n## Do not include spam-trigger words\n## Do not answer any questions you don't have knowledge of. Just strictly mention but do not give any confirmation.\n\n# OUTPUT\nThe output should be in JSON format with 3 keys ['subject', 'body', 'is_group']:\noutput: {\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"footnote\": \"string\",\n  \"is_group\": \"string\"\n}",
+          "batching": {
+            "batchSize": 5,
+            "delayBetweenBatches": 10000
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [-752, 144],
+      "id": "a88a0024-4c44-4342-9c11-973c8eefe4f8",
+      "name": "email generator for leads A",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"footnote\": \"string\",\n  \"is_group\": \"string\"\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [-592, 400],
+      "id": "ac5a7e2b-4987-4e21-9766-d2893dd453bb",
+      "name": "structured output parser2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an email marketing assistant and create the welcome emails with the provided information:\n\nagent_name: {{ $json.agentName }}\nfirst_name: {{ $json.firstName }}\nfb_group: {{ $json.FBGroup }}\nfootnote: Sincerely,\\n<agentName>\\nClient Relations Team\\nA Foreign Affair\nremarks: {{ $json.remarks }}\nis_group: false\n\n",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=# ROLE:\nYou are a email marketing assistant that mainly work on making Welcome Emails Campaign for new clients. You create emails that creates engaging and connecting to clients.\n\n# INPUT\n## agent_name: The agent's name which emails the client.\n## first_name: The first name of the client.\n## remarks: Comments or inquiries of the client.\n## footnote: The footnote template.\n## url: The link in which he is likely interested.\n## is_group: Flag for the workflow\n\n# TASK\n## 1. Create a subject title using \"Unlock Your Path to Real, Lasting Love\" as a guide to create variations. Make it similar in context. Don't mention the client's name.\n## 2. Create a personalized, engaging and connecting body email that will resonate with the client. Start by greeting yourself as {{$json.agentName}} then greet the client using it's first name {{ $json.firstName }} (if it's a valid name unlike email otherwise do not mention) and where you coming from, use the url {{ $json.url}} as the name of the company and add 'Service', then try to connect on how you found upon each other and his remarks {{ $json.remarks }}. Then a call to action that will intrigue the client. Lastly, Introduce what value you give to them as business that blooms love stories through dating online and foreign women for three decades. Make it sound human and natural.\n## 3. Change only the <agent_name> in the footnote template. Do not change anything else.\n## 3. Output both the subject title and the body in html format and is_group.\n\n# EXAMPLE\n<sample>\n\n# CONSTRAINTS\n## Always refer to the input provided and never generate unrelevant context.\n## Make it sound human and natural\n## Keep the tone conversational\n## Try not to talk too much\n## Do not include spam-trigger words\n## Do not answer any questions you don't have knowledge of. Just strictly mention but do not give any confirmation.\n\n# OUTPUT\nThe output should be in JSON format with 3 keys ['subject', 'body', 'is_group']:\noutput: {\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"footnote\": \"string\",\n  \"is_group\": \"string\"\n}",
+          "batching": {
+            "batchSize": 5,
+            "delayBetweenBatches": 10000
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [-720, 688],
+      "id": "cd647194-5fe1-490d-ad1e-8fc8d66d8998",
+      "name": "email generator for leads B",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4132bac0-1e03-4213-a958-a0ef864f69f2",
+              "name": "subject_template",
+              "value": "=Welcome to our <FBGroup>, <firstName>",
+              "type": "string"
+            },
+            {
+              "id": "912e7890-e40a-408f-ad25-4acffdb6374d",
+              "name": "body_template",
+              "value": "Hello <firstName>,\n\nThank you for joining our community\n\nOut of curiosity. Did you join because you're interested in meeting and serious romantic relationships with these beautiful women?\n\nI'm <agentsName> from <url>. Nice to meet you.",
+              "type": "string"
+            },
+            {
+              "id": "dd5fdd48-d702-4a58-a005-0bc5edac6da1",
+              "name": "footnote_template",
+              "value": "Sincerely,\n<agentName>\nClient Relations Team\nA Foreign Affair",
+              "type": "string"
+            },
+            {
+              "id": "58cce47c-682e-41d8-9c60-d0c96d08701e",
+              "name": "agentName",
+              "value": "={{ $json.agentName }}",
+              "type": "string"
+            },
+            {
+              "id": "4405b4ac-49b1-4fda-b245-5b17bec0a971",
+              "name": "firstName",
+              "value": "={{ $json.firstName }}",
+              "type": "string"
+            },
+            {
+              "id": "b8eed518-ac5b-4f92-8307-d60aea0f0a53",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "593fbec0-0517-4256-8c79-31a7ecd82bd9",
+              "name": "remarks",
+              "value": "={{ $json.remarks }}",
+              "type": "string"
+            },
+            {
+              "id": "fb8db452-bee9-45cc-96fb-9d8e6f2e3777",
+              "name": "FBGroup",
+              "value": "={{ $json.FBGroup }}",
+              "type": "string"
+            },
+            {
+              "id": "60fd19df-2db8-4e7a-a421-e0993056d157",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1408, 416],
+      "id": "66626e70-40cd-4d83-bedb-f1f1bf04fc74",
+      "name": "initialized template"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an email marketing assistant and create the welcome emails with the provided information:\n\nagent_name: {{ $json.agentName }}\nfirst_name: {{ $json.firstName }}\nfb_group: {{ $json.FBGroup || \"Facebook Group\" }}\nremarks: {{ $json.remarks }}\nsubject_template: {{ $json.subject_template }}\nbody_template: {{ $json.body_template }}\nfootnote_template: {{ $json.footnote_template }}\nurl: {{ $json.url }}\nis_group: true",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=# ROLE:\nYou are an email marketing assistant that creates Welcome Email Campaigns for new clients. Your goal is to generate emails that feel personal, conversational, and naturally engaging.\n\n# INPUT\n## agent_name: The agent's name sending the email.\n## first_name: The first name of the client.\n## fb_group: The name of the Facebook Group\n## remarks: Comments or inquiries of the client.\n## subject_template: The subject line template.\n## body_template: The body template.\n## footnote_template: The footnote template.\n## url: The website the agent_name is working for.\n## is_group: Flag for the workflow\n\n# TASK\n## 1. Use the provided subject_template and body_template\n## 2. Insert the inputs (agent_name, first_name, fb_group, remarks) into the placeholders inside the chosen template. Personalize the email to feel \"user-centered\" and positive. Merge the remarks into the introduction if there are any. Placeholders follow this format:\n   {{ $json.agentName }}. This should be bold. Use only one word for every placeholder except in the footnote.\n   {{ $json.firstName }}\n   {{ $json.FBGroup || \"Facebook Group\" }}\n  Introduce yourself working for {{ $json.url }} as the company. Remove the domain and split the website name into a proper noun. Only change the <agent_name> in the footnote, nothing else.\n## 3. Output both the subject line and the personalized body in HTML format and is_group.\n\n# CONSTRAINTS\n## Always use the provided inputs.\n## Keep the tone natural and conversational.\n## Avoid spam-trigger words.\n## Keep it short, engaging, and focused on connection.\n\n# OUTPUT\nReturn the result in JSON with the following structure :\n\noutput: {\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"footnote\": \"string\",\n  \"is_group\": \"string\"\n}",
+          "batching": {
+            "delayBetweenBatches": 10000
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [-1152, 416],
+      "id": "74beb36d-9025-46c6-997a-0b6468edf4bd",
+      "name": "email generator for leads C",
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-224, 544],
+      "id": "3f6d2992-e141-4178-8cb3-b54349b0da93",
+      "name": "log records",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "AQmVkWEvkp9v72Cc",
+          "name": "Google Sheets account 6"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}<br><br>\n\n{{ $json.footnote }}",
+        "options": {
+          "sendTo": "={{ $json.email}}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "a6862227-21ca-4176-bb3b-9433bd472e86",
+      "name": "create draft for agent A",
+      "webhookId": "883bf546-5c06-406b-9713-264442097d38",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e19ecef-8b5a-45e7-a8e4-b82025e9fcd0",
+              "name": "agent_assigned",
+              "value": "paloma01.afa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "b62f6a4e-14e8-40bd-8f03-4061ebd996e0",
+              "name": "lead_name",
+              "value": "={{ $('separate by category').item.json.fullName }}",
+              "type": "string"
+            },
+            {
+              "id": "2567b9f7-4642-4c4d-b7e6-871b85e110fb",
+              "name": "lead_email",
+              "value": "={{ $('separate by category').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "af228f15-6573-4d04-a9b2-9b72756bd6d3",
+              "name": "website",
+              "value": "={{ $('separate by category').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "b03905a2-7108-40e2-a7e3-f5af76a17e15",
+              "name": "drafted_date",
+              "value": "={{ $now.format('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "56f1e22c-5b1d-4d5b-b806-242096428369",
+              "name": "region",
+              "value": "latin",
+              "type": "string"
+            },
+            {
+              "id": "61142b59-3908-4224-b1a3-6c604fb70637",
+              "name": "subject",
+              "value": "={{ $('separate by category').item.json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "ffe53d6d-9ac5-4ad8-8546-3709f5177c43",
+              "name": "body",
+              "value": "={{ $('separate by category').item.json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [192, 0],
+      "id": "3064b505-5938-411a-88c9-54b7f0c071ed",
+      "name": "edit A"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "839ebe91-0697-415f-adbb-0df0cf448caf",
+                    "leftValue": "={{ $json.agentName }}",
+                    "rightValue": "latin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "A"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "55a593cc-46b8-43d9-a1a0-5dfe8d99d612",
+                    "leftValue": "={{ $json.agentName }}",
+                    "rightValue": "Corazon Dela Cruz",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "B"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "40d1a0a1-1ed7-4328-af93-15f45f6c646b",
+                    "leftValue": "={{ $json.agentName }}",
+                    "rightValue": "Anya Volkova",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "C"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0cbb0972-5a2b-4361-b5cf-e9b4b7fd9d20",
+                    "leftValue": "={{ $json.agentName }}",
+                    "rightValue": "Maria Wilson",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "D"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a8435f38-03fb-40d6-aa0c-3c65d29075e5",
+                    "leftValue": "={{ $json.agentName }}",
+                    "rightValue": "Amelia Johansson",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "E"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-224, 16],
+      "id": "22521290-1db6-4c23-92b5-a19709fae8b4",
+      "name": "separate by category"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}<br><br>\n\n{{ $json.footnote }}",
+        "options": {
+          "sendTo": "={{ $json.email}}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [352, 32],
+      "id": "c9fbf720-9c9e-462c-a579-d15a18294c0a",
+      "name": "create draft for agent B",
+      "webhookId": "3a5db133-91a4-40fc-a5ca-272bd043df14",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e19ecef-8b5a-45e7-a8e4-b82025e9fcd0",
+              "name": "agent_assigned",
+              "value": "corazondelacruz01.afa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "b62f6a4e-14e8-40bd-8f03-4061ebd996e0",
+              "name": "lead_name",
+              "value": "={{ $('separate by category').item.json.fullName }}",
+              "type": "string"
+            },
+            {
+              "id": "2567b9f7-4642-4c4d-b7e6-871b85e110fb",
+              "name": "lead_email",
+              "value": "={{ $('separate by category').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "af228f15-6573-4d04-a9b2-9b72756bd6d3",
+              "name": "website",
+              "value": "={{ $('separate by category').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "b03905a2-7108-40e2-a7e3-f5af76a17e15",
+              "name": "drafted_date",
+              "value": "={{ $now.format('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "dab4e159-27fb-4622-8841-56ee5ffd6bef",
+              "name": "region",
+              "value": "asian",
+              "type": "string"
+            },
+            {
+              "id": "072217b1-fd8f-4e75-bde8-7e63c1b3028c",
+              "name": "subject",
+              "value": "={{ $('separate by category').item.json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "27c2e122-9596-4311-a77f-f27c0219dad8",
+              "name": "body",
+              "value": "={{ $('separate by category').item.json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [512, 32],
+      "id": "cd934b41-eec2-4d7d-ae14-440680481ed0",
+      "name": "edit B"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}<br><br>\n\n{{ $json.footnote }}",
+        "options": {
+          "sendTo": "={{ $json.email}}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [672, 64],
+      "id": "df32c74a-2f39-4358-ac21-2a74eb6cd635",
+      "name": "create draft for agent C",
+      "webhookId": "8b1a1bfc-789f-4302-82fb-c323a90e6dd1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e19ecef-8b5a-45e7-a8e4-b82025e9fcd0",
+              "name": "agent_assigned",
+              "value": "anya01.afa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "b62f6a4e-14e8-40bd-8f03-4061ebd996e0",
+              "name": "lead_name",
+              "value": "={{ $('separate by category').item.json.fullName }}",
+              "type": "string"
+            },
+            {
+              "id": "2567b9f7-4642-4c4d-b7e6-871b85e110fb",
+              "name": "lead_email",
+              "value": "={{ $('separate by category').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "af228f15-6573-4d04-a9b2-9b72756bd6d3",
+              "name": "website",
+              "value": "={{ $('separate by category').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "b03905a2-7108-40e2-a7e3-f5af76a17e15",
+              "name": "drafted_date",
+              "value": "={{ $now.format('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "51005e48-eb6f-40d9-8e85-6e96f14af542",
+              "name": "region",
+              "value": "european",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [848, 64],
+      "id": "a25fbd08-7cde-46c0-b665-484b0e294aac",
+      "name": "edit C"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}\n\n{{ $json.footnote }}",
+        "options": {
+          "sendTo": "={{ $json.email}}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1008, 96],
+      "id": "6df4b684-4080-467f-bc05-753170ff1d99",
+      "name": "create draft for agent D",
+      "webhookId": "1a7c1d84-6cbd-43b9-8320-010e25d837eb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e19ecef-8b5a-45e7-a8e4-b82025e9fcd0",
+              "name": "agent_assigned",
+              "value": "mariawilson01.afa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "b62f6a4e-14e8-40bd-8f03-4061ebd996e0",
+              "name": "lead_name",
+              "value": "={{ $('separate by category').item.json.fullName }}",
+              "type": "string"
+            },
+            {
+              "id": "2567b9f7-4642-4c4d-b7e6-871b85e110fb",
+              "name": "lead_email",
+              "value": "={{ $('separate by category').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "af228f15-6573-4d04-a9b2-9b72756bd6d3",
+              "name": "website",
+              "value": "={{ $('separate by category').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "b03905a2-7108-40e2-a7e3-f5af76a17e15",
+              "name": "drafted_date",
+              "value": "={{ $now.format('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "dab4e159-27fb-4622-8841-56ee5ffd6bef",
+              "name": "region",
+              "value": "general",
+              "type": "string"
+            },
+            {
+              "id": "ff3e7784-9155-4a74-b6fb-35a3a53d8c2c",
+              "name": "subject",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "4fcb48ee-79cc-4c30-89bd-38bf489e16e9",
+              "name": "body",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1184, 96],
+      "id": "27a6173a-1c9c-4c43-b0ed-2e46b1dd9635",
+      "name": "edit D"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}\n\n{{ $json.footnote }}",
+        "options": {
+          "sendTo": "={{ $json.email}}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1344, 128],
+      "id": "85a7615c-6912-41c3-a148-7019c9232174",
+      "name": "create draft for agent E",
+      "webhookId": "a1da120c-d3ef-439f-baf7-4ebe190734f4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JhbInryeDOnxMokk",
+          "name": "dummy"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e19ecef-8b5a-45e7-a8e4-b82025e9fcd0",
+              "name": "agent_assigned",
+              "value": "amelia01.afa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "b62f6a4e-14e8-40bd-8f03-4061ebd996e0",
+              "name": "lead_name",
+              "value": "={{ $('separate by category').item.json.fullName }}",
+              "type": "string"
+            },
+            {
+              "id": "2567b9f7-4642-4c4d-b7e6-871b85e110fb",
+              "name": "lead_email",
+              "value": "={{ $('separate by category').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "af228f15-6573-4d04-a9b2-9b72756bd6d3",
+              "name": "website",
+              "value": "={{ $('separate by category').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "b03905a2-7108-40e2-a7e3-f5af76a17e15",
+              "name": "drafted_date",
+              "value": "={{ $now.format('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "dab4e159-27fb-4622-8841-56ee5ffd6bef",
+              "name": "region",
+              "value": "foreign_ladies",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1520, 128],
+      "id": "e43eef14-f9e4-425b-a251-4968b782253a",
+      "name": "edit E"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1728, 16],
+      "id": "b9732fca-c24a-4876-a8b6-89dc81ed660e",
+      "name": "merge output",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.region }}",
+                    "rightValue": "latin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "484680bb-480f-41a7-97b0-c6d8c0ab3c41"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "A"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f751d866-83cf-48bb-8dde-8934f908a97d",
+                    "leftValue": "={{ $json.region }}",
+                    "rightValue": "asian",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "B"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5d823361-5fdc-4cb0-92a3-5635399111ca",
+                    "leftValue": "={{ $json.region }}",
+                    "rightValue": "european",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "C"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b63f46f7-f2a3-4855-bbc3-82058e61d82c",
+                    "leftValue": "={{ $json.region }}",
+                    "rightValue": "general",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "D"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ff7abcc3-3c1e-4c2c-b8cc-3a488f44d392",
+                    "leftValue": "={{ $json.region }}",
+                    "rightValue": "foreign_ladies",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "E"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [-224, 288],
+      "id": "5cec07b7-57c3-484e-931f-5095e3dd6bb7",
+      "name": "separate by category1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [0, 272],
+      "id": "a1447a22-c245-4e0d-bf54-828bd242cbe9",
+      "name": "add row in group A",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [160, 304],
+      "id": "d21e610d-31e1-42f5-ae9d-ab1c925cdb2a",
+      "name": "add row in group B",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [320, 336],
+      "id": "7745c2c2-724d-448b-b3b6-566dc2c4c1d4",
+      "name": "add row in group C",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "name"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [480, 368],
+      "id": "07cc3d0a-1dc4-4d61-a4e9-d7e16b224558",
+      "name": "add row in group D",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [640, 400],
+      "id": "115920bb-bb67-4d92-8e7c-712e3f92ca03",
+      "name": "add row in group E",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [848, 288],
+      "id": "2463abfd-13cf-4e85-8c62-89cc45c63c1d",
+      "name": "merge output1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "827d2f58-dbe9-45d9-b1a8-ad07df8f9035",
+              "name": "type",
+              "value": "new",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1008, 336],
+      "id": "86ad7704-f8be-4b35-bf34-18b5302901b9",
+      "name": "initialized type1",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uWsoepschpMryQLr",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uWsoepschpMryQLr",
+          "cachedResultName": "[SUB] welcome-email-fresh-lead-automation-v4.0.0/extracts-data-from-email-tracker-v1.0.0"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "={{ $json.type }}"
+          },
+          "matchingColumns": ["type"],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1184, 336],
+      "id": "f9061234-af5a-4687-99a7-b0ba008f61ba",
+      "name": "extracts data from tracker workflow1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1360, 336],
+      "id": "89e7ab7d-2fe3-4e2f-bab8-c1f131511b7e",
+      "name": "add emails status",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-1328, 704],
+      "id": "23572d29-3f49-4be6-a8ee-a5241ef87627",
+      "name": "gemini2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3EbDUFrNRAoUQPpw",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-1168, 704],
+      "id": "ba4ced92-5058-4e16-baf8-5bb29fa65254",
+      "name": "gemini3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3EbDUFrNRAoUQPpw",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-1040, 800],
+      "id": "eba95e7c-a951-40d6-8616-b0c9a45e0fc1",
+      "name": "llama-3.1b",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"footnote\": \"string\",\n  \"is_group\": \"string\"\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [-560, 944],
+      "id": "dba47cd9-77cd-4ec4-a481-19d512c1ad4f",
+      "name": "structured output parser3"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"footnote\": \"string\",\n  \"is_group\": \"string\"\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [-1040, 640],
+      "id": "5d594e5f-d0fc-4db1-af37-0e341297f3d6",
+      "name": "structured output parser4"
+    }
+  ],
+  "connections": {
+    "gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "email generator for leads B",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "qwen": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "email generator for leads B",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "llama instant": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "structured output parser3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop over emails": {
+      "main": [
+        [
+          {
+            "node": "separate by category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "check if fbgroup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set variables": {
+      "main": [
+        [
+          {
+            "node": "loop over emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if fbgroup": {
+      "main": [
+        [
+          {
+            "node": "check if live chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "initialized template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if email sent": {
+      "main": [
+        [
+          {
+            "node": "check if email sent in db",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if email sent in db": {
+      "main": [
+        [
+          {
+            "node": "rename columns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "email generator for leads A",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "qwen1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "email generator for leads A",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "llama instant1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "structured output parser2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if live chat": {
+      "main": [
+        [
+          {
+            "node": "email generator for leads A",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "email generator for leads B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "schedule trigger2": {
+      "main": [
+        [
+          {
+            "node": "initialized type",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get rows in email tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get rows in email tracker": {
+      "main": [
+        [
+          {
+            "node": "check if email sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rename columns": {
+      "main": [
+        [
+          {
+            "node": "merge emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "initialized type": {
+      "main": [
+        [
+          {
+            "node": "extracts data from tracker workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extracts data from tracker workflow": {
+      "main": [
+        [
+          {
+            "node": "merge emails",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "merge emails": {
+      "main": [
+        [
+          {
+            "node": "set variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "separates subject and body": {
+      "main": [
+        [
+          {
+            "node": "loop over emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "email generator for leads A": {
+      "main": [
+        [
+          {
+            "node": "separates subject and body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structured output parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "email generator for leads A",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "email generator for leads B": {
+      "main": [
+        [
+          {
+            "node": "separates subject and body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "initialized template": {
+      "main": [
+        [
+          {
+            "node": "email generator for leads C",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "email generator for leads C": {
+      "main": [
+        [
+          {
+            "node": "separates subject and body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "email generator for leads C",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create draft for agent A": {
+      "main": [
+        [
+          {
+            "node": "edit A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit A": {
+      "main": [
+        [
+          {
+            "node": "merge output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "separate by category": {
+      "main": [
+        [
+          {
+            "node": "create draft for agent A",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create draft for agent B",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create draft for agent C",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create draft for agent D",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create draft for agent E",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create draft for agent B": {
+      "main": [
+        [
+          {
+            "node": "edit B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit B": {
+      "main": [
+        [
+          {
+            "node": "merge output",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "create draft for agent C": {
+      "main": [
+        [
+          {
+            "node": "edit C",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit C": {
+      "main": [
+        [
+          {
+            "node": "merge output",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "create draft for agent D": {
+      "main": [
+        [
+          {
+            "node": "edit D",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit D": {
+      "main": [
+        [
+          {
+            "node": "merge output",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "create draft for agent E": {
+      "main": [
+        [
+          {
+            "node": "edit E",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit E": {
+      "main": [
+        [
+          {
+            "node": "merge output",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "merge output": {
+      "main": [
+        [
+          {
+            "node": "separate by category1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "log records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "separate by category1": {
+      "main": [
+        [
+          {
+            "node": "add row in group A",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "add row in group B",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "add row in group C",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "add row in group D",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "add row in group E",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add row in group A": {
+      "main": [
+        [
+          {
+            "node": "merge output1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add row in group B": {
+      "main": [
+        [
+          {
+            "node": "merge output1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "add row in group C": {
+      "main": [
+        [
+          {
+            "node": "merge output1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "add row in group D": {
+      "main": [
+        [
+          {
+            "node": "merge output1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "add row in group E": {
+      "main": [
+        [
+          {
+            "node": "merge output1",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "merge output1": {
+      "main": [
+        [
+          {
+            "node": "initialized type1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "initialized type1": {
+      "main": [
+        [
+          {
+            "node": "extracts data from tracker workflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extracts data from tracker workflow1": {
+      "main": [
+        [
+          {
+            "node": "add emails status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "email generator for leads C",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "email generator for leads C",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "llama-3.1b": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "structured output parser4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structured output parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "email generator for leads B",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structured output parser4": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "email generator for leads C",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cadf9e947af7c573164cc8d7276a61ac5fedcd1324e7db8c350e0deb6ca4620"
+  }
+}

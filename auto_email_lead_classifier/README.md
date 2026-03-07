@@ -1,5 +1,7 @@
 # Automated Email Lead Classifier
 
+![Automated Email Lead Classifier](assets/auto_email_lead_classifier.png "Automated Email Lead Classifier")
+
 ## Project Overview:
 
 This n8n workflow serves as an intelligent bridge between raw email communication and structured lead management. By combining automated retrieval, internal data mapping, and LLM-powered classification, the system identifies high-value opportunities and organizes them into a CRM-ready format.
@@ -37,16 +39,17 @@ The automation follows a structured four-phase pipeline to move from raw inbox d
 ## Technical Node Stack
 
 The following nodes are utilized to execute this workflow:
-**Schedule Trigger**: Drives the automated polling interval
-**Gmail Nodes**: Multi-account retrieval of email threads
-**Filter & If**: Determines if a thread requires AI intervention
-**Structures Messages**: Custom JS for reply-stripping and history management.
-**Google Sheets**: Source of truth for existing records and agent IDs.
-**Classifier Agent**: LLM-based sentiment and intent analyzer
-**Edit Node**: Maps AI text output to structured database labels.
+
+- **Schedule Trigger**: Drives the automated polling interval
+- **Gmail Nodes**: Multi-account retrieval of email threads
+- **Filter & If**: Determines if a thread requires AI intervention
+- **Structures Messages**: Custom JS for reply-stripping and history management.
+- **Google Sheets**: Source of truth for existing records and agent IDs.
+- **Classifier Agent**: LLM-based sentiment and intent analyzer
+- **Edit Node**: Maps AI text output to structured database labels.
 
 ## Business Impact
 
-**Scalability**: Allows a single agent to manage hundreds of threads by only focusing on "HOT" or "POTENTIAL" leads flagged by the AI.
-**Data Integrity**: Automatically cleans and truncates message history (keeping only the last 3 exchanges) to keep the database lean and relevant.
-**Persistence**: Automatically calculates and schedules follow-up dates to ensure no lead goes cold.
+- **Scalability**: Allows a single agent to manage hundreds of threads by only focusing on "HOT" or "POTENTIAL" leads flagged by the AI.
+- **Data Integrity**: Automatically cleans and truncates message history (keeping only the last 3 exchanges) to keep the database lean and relevant.
+- **Persistence**: Automatically calculates and schedules follow-up dates to ensure no lead goes cold.
