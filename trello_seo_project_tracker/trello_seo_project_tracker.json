@@ -1,0 +1,1429 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fc2742aa-dca8-45ad-a8b6-43dd9037efec",
+              "leftValue": "=",
+              "rightValue": "={{ $json.id }}",
+              "operator": {
+                "type": "array",
+                "operation": "contains",
+                "rightType": "any"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [3520, 4320],
+      "id": "93025017-ef28-4cda-b595-aeb7d4f7ebce",
+      "name": "filter unimportant lists"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "getAll",
+        "id": "6937e077b1e01d2a3a9db96f",
+        "additionalFields": {
+          "fields": "id,name"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [3344, 4320],
+      "id": "c927e9c0-493e-4c3a-8847-03ccf0452e73",
+      "name": "get all lists",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "getCards",
+        "id": "={{ $json.id }}",
+        "returnAll": true,
+        "additionalFields": {
+          "fields": "all"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [3696, 4320],
+      "id": "b2606230-e6a1-4d9e-86a2-add12797f6e4",
+      "name": "get all cards from lists",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "faec1aca-a1d9-427a-bc9d-fa52bcf1e621",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": ".",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [3872, 4320],
+      "id": "dc7e5f5e-fcea-41ce-b91f-a3f30b56daab",
+      "name": "filter title cards"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.trello.com/1/cards/{{ $json.id }}/actions ",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "trelloApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{}]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [4352, 4400],
+      "id": "169b34de-8d4a-4978-8a03-2488cef50f0c",
+      "name": "get all activities",
+      "alwaysOutputData": true,
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.trello.com/1/cards/{{ $json.id }}/actions ",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "trelloApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "updateCard"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [4352, 4272],
+      "id": "dd0ca1b9-4c03-4a52-9489-ebfd50083bd4",
+      "name": "get all card updates",
+      "alwaysOutputData": true,
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.trello.com/1/lists/list_id/actions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "trelloApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "moveCardToBoard,copyCard"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [4352, 4128],
+      "id": "05e5a9cd-6ae1-4009-9eb7-8f6d99c3ea10",
+      "name": "get all new card updates",
+      "executeOnce": true,
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const history = $input.all();\n\n// Filter: Isolate comment history for validation checks\nconst comments_history = history.filter(x => x.type === \"commentCard\");\n\n// [REDACTED]: Configuration for mapping list IDs to names\nconst actions_list = [\n  { list_id: \"ID_001\", list_name: \"List Name 1\" },\n  // ...\n];\n\n// [REDACTED]: Configuration for valid move rules and required comments\nconst valid_move = [\n  { action: \"List A -> List B\", valid_comment: \"specific text required\" },\n  // ...\n];\n\nconst result = [];\n\n// Main Processing Loop\nFOR each item IN history:\n  INITIALIZE validation flag (valid = false);\n  \n  // 1. Initial Data Extraction\n  EXTRACT id, data, type, member, date, memberIds;\n  DECLARE variables: actions, beforeAction, afterAction, currentStatus;\n\n  // 2. Exclusion Logic\n  IF data.old.idLabels changed OR date is before today:\n    SKIP iteration (continue);\n\n  // 3. Processing \"Update\" Events (data.old exists)\n  IF data.old exists:\n    \n    // Case A: Card Moved Between Lists\n    IF type is 'updateCard' AND list changed:\n      MAP list IDs to names using 'actions_list';\n      SET actions = \"Old List -> New List\";\n      SET currentStatus = New List;\n      \n      // Validation: Check if move is allowed based on comment history\n      RETRIEVE comments for this card ID;\n      FIND rule in 'valid_move' matching this action;\n      IF rule exists:\n        CHECK if any comment contains the 'valid_comment' string;\n        SET valid = true if match found;\n      \n    // Case B: Card Position Changed within List\n    ELSE IF type is 'updateCard' AND position changed:\n      SET actions = \"CARDS POSITION CHANGE\";\n      SET currentStatus = current list name;\n      // Note: valid remains false (default)\n\n    // Case C: Description Modified\n    ELSE IF type is 'updateCard' AND description changed:\n      SET actions = \"DESCRIPTION MODIFIED\";\n      SET beforeAction = old description;\n      SET afterAction = new description;\n      SET currentStatus = current list name;\n\n  // 4. Processing \"Create/Comment\" Events (data.old does not exist)\n  ELSE:\n    \n    // Case D: New Comment Added\n    IF type is \"commentCard\":\n      SET actions = \"NEW COMMENT\";\n      SET afterAction = comment text;\n      SET currentStatus = list name;\n\n    // Case E: New Card Added/Copied\n    ELSE IF type is \"moveCardToBoard\" OR \"copyCard\":\n      SET actions = \"NEW CARD ADDED\";\n      SET afterAction = list name;\n      SET currentStatus = list name;\n\n  // 5. Final Output Construction\n  IF valid is true:\n    PUSH object to result array:\n      - timestamp (ISO)\n      - datetime (Formatted)\n      - card details (id, name, shift)\n      - action details (type, before/after)\n      - member info (creator, ids)\n      - metadata (description, labels);\n\nRETURN result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6176, 4192],
+      "id": "3a67bdae-4c70-46d0-8fad-424d81a3a0e4",
+      "name": "extracting data"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "=",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [6416, 4192],
+      "id": "55d315ce-8472-4a15-8aa9-0cb7702e31e1",
+      "name": "save raw data log",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "joinMode": "keepEverything",
+        "options": {
+          "multipleMatches": "all"
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [4560, 4320],
+      "id": "8811460b-7a9d-425c-bad8-d61f39cf6ad8",
+      "name": "merge card updates and activities"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst result = [];\nconst am = [];\nconst pm = [];\n\n// Generate a unique identifier for this batch processing run\nconst snapshotId = COMBINE current timestamp (base36) AND random string;\n\n// Helper: Markdown Sanitization\n// Strips HTML and Markdown syntax to isolate raw text\nfunction normalizeText(markdown) {\n  IF input is empty RETURN empty string;\n  \n  REMOVE HTML tags (e.g., <div>, <br>);\n  REMOVE Bold/Italic markers (e.g., **, __, *, _);\n  REMOVE Inline code blocks (e.g., `code`);\n  EXTRACT text from Links and Images (discard URLs);\n  REMOVE Headers (e.g., # Header);\n  REMOVE Blockquotes (e.g., > quote);\n  REMOVE List markers (e.g., *, -, 1.);\n  REMOVE Horizontal rules (e.g., ---);\n  TRIM whitespace;\n\n  RETURN clean text;\n}\n\n// Helper: Video Metadata Parser\n// Extracts key-value pairs from a formatted description string\nfunction getVideoInfo(text) {\n  // Regex: Looks for **Key:** followed by value until next ** or end of string\n  DEFINE regex pattern for key-value extraction;\n  \n  const results = {};\n  ITERATE over all matches found in text:\n    EXTRACT rawKey and rawValue;\n    \n    // Key Cleaning\n    LOWERCASE key;\n    REPLACE spaces/hyphens with underscores (e.g., \"Video Title\" -> \"video_title\");\n    \n    // Value Cleaning\n    TRIM whitespace and newlines;\n    \n    // Validation\n    IF value is empty or placeholder:\n      ASSIGN empty string;\n    ELSE:\n      ASSIGN cleaned value;\n\n  RETURN results object;\n}\n\n// Main Processing Loop\nFOR each item IN items:\n  CALL getVideoInfo on item description;\n  LOG extracted info;\n  \n  ASSIGN snapshot_id to item;\n  \n  // Map parsed data to item properties\n  MAP video_title, page_title, web_title, meta_title;\n  MAP yt_video, yt_shorts, desc (description), category;\n  MAP file_path, copyright_compliance, video_plan_link;\n  MAP skps, keyword, smm_drive_link, comments;\n\n  // Sort by Shift\n  CHECK item shift label;\n  IF shift is \"AM\":\n    ADD to 'am' array;\n  ELSE:\n    ADD to 'pm' array;\n\n// Final Output\n// Concatenate AM items first, followed by PM items\nRETURN am.concat(pm);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4752, 4544],
+      "id": "e0b2e86e-f573-4071-abcb-e6f7b924ae0a",
+      "name": "sort and create snapshot id for the day"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [5104, 4544],
+      "id": "0bddbf48-5427-46dc-a8d4-754cad807bf3",
+      "name": "raw cards daily snapshot",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "data.card.id",
+              "field2": "id"
+            }
+          ]
+        },
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [5984, 4192],
+      "id": "37615f6d-90a5-4b2f-be16-14ac89862480",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const activities = $input.all();\n\n// [REDACTED]: List of IDs to exclude from processing\nconst toRemove = [\n  \"CARD_ID_TO_EXCLUDE_1\",\n  \"CARD_ID_TO_EXCLUDE_2\",\n  // ...\n];\n\n// Filter: Remove blacklisted cards\nconst result = activities.filter(item => {\n  CHECK if item card ID exists in 'toRemove' list;\n  RETURN true if NOT in list (keep item);\n});\n\n// Filter: Date Relevance\n// Only keep activities occurring after today\nconst filtered_act = result.filter(n => {\n  PARSE activity date to local time;\n  COMPARE with current date ($today);\n  RETURN true if activity date is in the future;\n});\n\n// Sort: Chronological Ordering\n// Sorts filtered activities from oldest to newest\nconst sorted_act = filtered_act.sort(\n  (a, b) => {\n    CONVERT date strings to milliseconds;\n    CALCULATE difference (a - b);\n  }\n);\n\nRETURN sorted_act;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5296, 4176],
+      "id": "1ebcd482-6534-45c0-a0dc-aba15f4a5b37",
+      "name": "sort and filter"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [5824, 4352],
+      "id": "c4bba70b-bb4f-48cc-b71c-45dae5ae4cf1",
+      "name": "Remove Duplicates1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "id": {
+          "__rl": true,
+          "value": "={{ $json.data.card.id }}",
+          "mode": "id"
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [5632, 4352],
+      "id": "a5db591d-e5d6-4f68-aa1f-9f52ae6be6a8",
+      "name": "get card info1",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const taskLogs = $('extracting data').all();\n\n// [REDACTED]: Sensitive team member roster redacted\nconst members_list = [\n  { member_id: \"ID_001\", name: \"Member A\", role: \"VidEd\" },\n  { member_id: \"ID_002\", name: \"Member B\", role: \"SEO\" },\n  // ...\n];\n\n// Helper: Markdown Sanitization\nfunction normalizeText(text) {\n  REMOVE '**' wrapping (bold);\n  REMOVE '*' wrapping (italic);\n  REMOVE '_' wrapping (italic);\n  TRIM whitespace;\n  RETURN clean text;\n}\n\n// Helper: Video Metadata Extraction\nfunction getVideoInfo(rawText) {\n  CALL normalizeText;\n  REGEX MATCH for specific fields:\n    - Video Title\n    - Web Title\n    - YT Video / YT Shorts links\n    - Description\n    - Category\n    - File Path\n    - Trello Link\n  RETURN object with parsed values;\n}\n\nconst uniqueTasks = [];\n\n// Main Processing Loop\nFOR each task IN taskLogs:\n  CALL getVideoInfo to parse description;\n  \n  // Determine QC Status\n  CHECK if description or status indicates \"FOR KIRKS QC\";\n\n  // Deduplication Logic\n  FIND index of existing task with same card_id;\n\n  // Case 1: New Task\n  IF task does not exist in uniqueTasks:\n    IDENTIFY Editor (VidEd) and SEO from member IDs;\n    PUSH new object to array:\n      - Card ID & Name\n      - Timestamp (latest activity)\n      - Shift\n      - Video Type\n      - Team Members (Editor, SEO)\n      - File Directory\n      - Status\n      - Kirk QC Flag;\n\n  // Case 2: Existing Task\n  ELSE:\n    // Check for more recent activity\n    IF current task timestamp > stored timestamp:\n      UPDATE task record with new data;\n      MAINTAIN Kirk QC flag (OR logic with previous state);\n    ELSE:\n      // Older task, but update flag if Kirk QC was detected\n      IF current task is Kirk QC:\n        SET stored Kirk QC flag to true;\n\nRETURN uniqueTasks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6624, 4192],
+      "id": "38c5ae26-f099-404b-b33e-405f5ad3e42e",
+      "name": "only return unique task and latest status"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [6816, 4192],
+      "id": "8c530357-4e05-4052-b0b6-5a4f190b7e34",
+      "name": "update task repository status",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3152, 4736],
+      "id": "2efb8bd9-4304-4524-b007-49a6b2f5747e",
+      "name": "get logs",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [7008, 4192],
+      "id": "41b0761f-3728-4021-b546-199741126864",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [6416, 4352],
+      "id": "bee3f2af-5205-4025-b5fc-819c03408085",
+      "name": "data log seo",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3568, 4736],
+      "id": "cea54717-238a-4856-82a6-709264bf85a7",
+      "name": "raw time tracker",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3792, 4736],
+      "id": "ff0c2e55-524c-464e-8748-44a31bdafd48",
+      "name": "seo time tracker",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pseudo-code for Performance Analytics Aggregator\n\nconst logs = $input.all();\n\n// Configuration: List of team members with roles and IDs\n// [REDACTED]: Sensitive user data redacted\nconst members_list = [\n  { member_id: \"ID_001\", name: \"Member A\", role: \"VidEd\" },\n  { member_id: \"ID_002\", name: \"Member B\", role: \"SEO\" },\n  // ... additional members\n];\n\n// Helper: Remove markdown formatting (bold/italic)\nfunction normalizeText(text) {\n  REMOVE '**' wrapping\n  REMOVE '_' or '*' wrapping\n  RETURN trimmed text;\n}\n\n// Helper: Extract video metadata from description text\nfunction getVideoInfo(rawText) {\n  PARSE text for:\n    - Video Title\n    - Web Title\n    - YouTube Video Link\n    - YouTube Shorts Link\n    - Description\n    - Category\n    - File Path\n    - Trello Card Link\n  RETURN object with parsed fields or empty strings;\n}\n\n// Helper: Calculate readable duration between two timestamps\nfunction getTimeDiff(startTime, endTime) {\n  IF missing inputs RETURN empty string;\n  CALCULATE difference in milliseconds;\n  CONVERT to Days, Hours, Minutes;\n  RETURN formatted string (e.g., \"2 days 4 hours\");\n}\n\n// Logic: Calculate duration of the \"Editing\" phase\n// Start: \"EDITING IN PROGRESS\" -> End: \"READY FOR QC\"\nfunction calculateEditTime(log, existingData) {\n  EXTRACT timestamp from log;\n  UPDATE start/end times based on status transitions;\n  CALCULATE duration;\n  RETURN timing data;\n}\n\n// Logic: Calculate duration of the \"QC\" phase\n// Start: \"ONGOING QC\" -> End: \"COMPLETE/LIVE\"\nfunction calculateQCTime(log, existingData) {\n  EXTRACT timestamp from log;\n  UPDATE start/end times based on status transitions;\n  CALCULATE duration;\n  RETURN timing data;\n}\n\n// Logic: Calculate duration for specific \"Kirks QC\" phase\nfunction calculateTotalKirksQCTime(log, existingData) {\n  EXTRACT timestamp from log;\n  CHECK for \"FOR KIRKS QC\" to \"COMPLETE/LIVE\" transition;\n  CALCULATE duration;\n  RETURN timing data;\n}\n\n// Logic: Calculate time spent waiting for upload\nfunction calculateTotalIdleUploadTime(log, existingData) {\n  EXTRACT timestamp from log;\n  CHECK for \"FOR UPLOAD\" status transitions;\n  CALCULATE idle duration;\n  RETURN timing data;\n}\n\n// Logic: Calculate total turnaround time\nfunction calculateTotalCompleteTime(log, existingData) {\n  CALCULATE time from initial editing start to final live status;\n  RETURN total duration;\n}\n\n// Main Processing Loop\nconst result = [];\n\nFOR each log IN logs:\n  CHECK if card already exists in result array;\n  \n  INITIALIZE revisionCount = 0;\n  INITIALIZE existingData = null;\n  \n  IF card exists:\n    LOAD existing data;\n    RETRIEVE current revision count;\n  \n  // Run calculations\n  CALL calculateEditTime();\n  CALL calculateQCTime();\n  CALL calculateTotalKirksQCTime();\n  CALL calculateTotalIdleUploadTime();\n  CALL calculateTotalCompleteTime();\n  \n  // Extract Metadata\n  CALL getVideoInfo();\n  \n  // Identify Team Members\n  PARSE member IDs from log;\n  FIND member with role \"VidEd\" (Editor);\n  FIND member with role \"SEO\";\n  \n  // Count Revisions\n  IF status changed to \"REVISION\":\n    INCREMENT revisionCount;\n  \n  // Construct Output Object\n  const updated = {\n    cardId: log.card_id,\n    cardName: log.card_name,\n    shift: log.shift,\n    status: log.current_status,\n    videoType: parsed_category,\n    editor: identified_editor_name,\n    seo: identified_seo_name,\n    revisionCount: final_count,\n    ...timing_data_objects\n  };\n\n  // Update or Add to Results\n  IF card is new:\n    ADD to result array;\n  ELSE:\n    UPDATE existing entry in result array;\n\nRETURN result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3360, 4736],
+      "id": "985928ef-0f35-4a55-88dd-364bc641e36a",
+      "name": "calculate time"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [4736, 4192],
+      "id": "410ccde1-4229-4a88-8f42-00f18d3bc964",
+      "name": "merge new cards and activities"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "57 14,23 * * 1-6"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [2944, 4320],
+      "id": "ab5a7c62-b120-4a5f-b7ff-713d50a724d0",
+      "name": "schedule1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5902edc2-1bad-4518-88a1-94a4b5525986",
+              "name": "shift",
+              "value": "={{ $json.timestamp.toDateTime().extract('hour') < 15 ? 'AM' : 'PM' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [3152, 4320],
+      "id": "b65c8611-fb6b-44a0-aaba-e3b619a6b0ee",
+      "name": "identify shift"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "011bfc19-66cf-4e53-8490-2e0a712d372c",
+              "leftValue": "={{ $json.date.toDateTime().toLocal().extract('hour') }}",
+              "rightValue": 15,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [5104, 4352],
+      "id": "f5294d33-fa0f-441f-aa4e-730db61c7707",
+      "name": "filter for PM"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "82bf43d5-84dd-4ad6-a1cc-caf26f09cc48",
+              "leftValue": "={{ $('identify shift').item.json.shift }}",
+              "rightValue": "AM",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [4928, 4192],
+      "id": "17e218f2-2ef0-4097-9469-7ed46955940a",
+      "name": "check if AM"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "82bf43d5-84dd-4ad6-a1cc-caf26f09cc48",
+              "leftValue": "={{ $('identify shift').item.json.shift }}",
+              "rightValue": "PM",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [4128, 4592],
+      "id": "b1047c3e-d7c1-4dc0-b05d-86fa750b31db",
+      "name": "check if PM"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [5104, 4704],
+      "id": "259257c6-39ac-4bff-8a58-999f5a3014ac",
+      "name": "daily snapshot seo",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3152, 4912],
+      "id": "00d13d78-8303-4b62-8327-7d1548df7871",
+      "name": "get cards history",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "99a5e873-7097-4b4f-9aba-d25188e70b6f",
+              "name": "=weekNum",
+              "value": "={{ Math.ceil(($now.day + $now.startOf('month').weekday - 1) / 7) }}",
+              "type": "string"
+            },
+            {
+              "id": "febb4f22-cf9c-456c-8a66-5a255195da56",
+              "name": "month",
+              "value": "={{ $now.monthLong }}",
+              "type": "string"
+            },
+            {
+              "id": "d5d4aa8e-d67e-4ff3-b5ce-6e1539b0468c",
+              "name": "shift",
+              "value": "={{ $json.shift }}",
+              "type": "string"
+            },
+            {
+              "id": "70e163dd-479b-4917-a030-d51319010879",
+              "name": "editor_name",
+              "value": "={{ $json.editor_name }}",
+              "type": "string"
+            },
+            {
+              "id": "43adbe70-c064-42fd-826d-28cff1317bb7",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "2ee1e2ad-826b-4df1-835f-56a1b7cfc947",
+              "name": "video_type",
+              "value": "={{ $json.video_type }}",
+              "type": "string"
+            },
+            {
+              "id": "4eee8e68-0c49-4368-9ac9-46be776ce737",
+              "name": "card_id",
+              "value": "={{ $json.card_id }}",
+              "type": "string"
+            },
+            {
+              "id": "79b11285-22e9-44c7-94c5-e3dfeb0c50fa",
+              "name": "card_name",
+              "value": "={{ $json.card_name }}",
+              "type": "string"
+            },
+            {
+              "id": "f5615832-0be1-49e7-a78f-6cbfe152034d",
+              "name": "kirk_qc",
+              "value": "={{ $json.status_by_kirk }}",
+              "type": "string"
+            },
+            {
+              "id": "779e8356-3127-4251-9f7e-8b7169263c28",
+              "name": "latest_activity",
+              "value": "={{ $json.latest_activity_date }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [3552, 4976],
+      "id": "eae2d4ea-84a5-42cb-874f-4c4b0751b9ec",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3152, 5056],
+      "id": "81e24a18-c14a-44a7-9cda-deb0f6278026",
+      "name": "get cards history1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "card_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [3360, 4976],
+      "id": "0a6af7ca-3ff5-47bd-b20e-c03ed0e9aae6",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tasks = $input.all();\n\n// Filter: Keep only tasks marked as 'COMPLETED'\nconst completedTasks = tasks.filter(x => \n  CHECK if x.status contains \"COMPLETED\" (case-insensitive)\n);\n\n// Config: Define valid video categories for processing\nconst VALID_VIDEO_TYPES = [\"Ladies Profile Videos\", \"Long form\", \"Regular YT Video\"];\n\n// Helper: Robust Date Parser\n// Handles ISO strings, Unix timestamps (seconds/milliseconds), and numeric strings\nfunction parseDateRobust(dateVal) {\n  IF dateVal is missing RETURN null;\n  IF dateVal is a numeric string CONVERT to number;\n  IF dateVal is a small number (seconds) MULTIPLY by 1000 for milliseconds;\n  CREATE Date object;\n  IF date is invalid RETURN null;\n  RETURN Date object;\n}\n\n// Helper: Week Range Generator\n// Defines weeks as Sunday to Saturday\nfunction getTaskWeekRange(date) {\n  GET current day of week (0=Sun, 6=Sat);\n  CALCULATE start of week (Sunday);\n  CALCULATE end of week (Saturday);\n  RETURN { start, end };\n}\n\n// [REDACTED]: Sensitive team member roster redacted\nconst members_list = [\n  { name: \"Member A\", role: \"VidEd\" },\n  // ...\n];\n\nconst editorStats = {};\n\n// Main Processing Loop\nFOR each task IN completedTasks:\n  EXTRACT task data;\n  \n  PARSE task date using robust parser;\n  IF date is invalid SKIP iteration;\n\n  // 1. DYNAMIC WEEK CALCULATION\n  CALCULATE week start/end dates;\n  DETERMINE month and year based on week start date;\n  \n  // 2. MEMBER MATCHING\n  NORMALIZE editor name from task;\n  FIND matching member in members_list with role 'VidEd';\n  IF no match found SET editorName to 'Unassigned';\n\n  // 3. TYPE CATEGORIZATION\n  CHECK if task requires 'Kirk QC' (k_) or standard (s_);\n  MATCH video type against VALID_VIDEO_TYPES list;\n  IF no match SET type to \"Other\";\n  CONSTRUCT category key (e.g., \"s_ladies_profile_videos\");\n\n  // 4. GROUPING DATA\n  DEFINE group key = Year + Month + WeekStart + Editor + Shift;\n  \n  IF group does not exist:\n    INITIALIZE group object with time range, editor, and shift details;\n  \n  IF category key does not exist in group:\n    INITIALIZE Set for unique card IDs (deduplication);\n  \n  ADD card_id to the specific category Set;\n\n// 5. FINAL TRANSFORMATION\nRETURN mapped results:\n  FOR each group IN editorStats:\n    CALCULATE total videos by summing Set sizes;\n    CONSTRUCT output object containing:\n      - Time metadata (Year, Month, Range)\n      - Editor details (Name, Shift)\n      - Counts for each video type (Standard vs Kirk QC)\n      - Total video count\n    RETURN formatted JSON;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3760, 4976],
+      "id": "b2a40420-e761-452f-98c0-a36a57b66b4c",
+      "name": "calculate data"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3968, 4976],
+      "id": "e2bb38f1-00b5-493f-ac75-f85bef929fb6",
+      "name": "raw data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [4160, 4976],
+      "id": "fb682c19-875f-49a1-934c-5bbdeb8f85e5",
+      "name": "SEO data summary",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [5456, 4352],
+      "id": "bf6bab73-d0e3-4604-9f1e-4b467bd1233c",
+      "name": "Wait",
+      "webhookId": "8811c7e6-e26b-4d93-8850-a98d3cd196aa"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [4128, 4128],
+      "id": "81e1089b-6a5b-4601-8f6f-04e2eaa5380a",
+      "name": "Wait1",
+      "webhookId": "684cba14-bed7-4a7d-8f76-a4451f904c37"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [4128, 4272],
+      "id": "f2ec721f-7298-49ad-812b-39d81433d808",
+      "name": "Wait2",
+      "webhookId": "81ff8516-b16f-48e1-959e-b39b42a1aa40"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [4128, 4400],
+      "id": "b7b202d5-1f1d-4b39-b50e-aaea2142e0c7",
+      "name": "Wait3",
+      "webhookId": "178a98d8-4e36-494e-9ac7-f4c07b562f85"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [4928, 4544],
+      "id": "69e2ab4e-3e53-4745-b52f-3106ee282bda",
+      "name": "Wait4",
+      "webhookId": "5a2bf623-9b55-4664-b402-9613d324dcc0"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cards = $input.all();\n\n// [REDACTED]: Sensitive task list configuration redacted\nconst task_list = [\n  { id: \"LIST_ID_1\", name: \"List Name 1\" },\n  // ...\n];\n\n// [REDACTED]: Sensitive team member roster redacted\nconst members_list = [\n  { member_id: \"ID_001\", name: \"Member A\", role: \"SEO\" },\n  { member_id: \"ID_002\", name: \"Member B\", role: \"VidEd\" },\n  // ...\n];\n\nconst results = [];\n\n// Main Processing Loop\nFOR each card IN cards:\n  // 1. Date & Time Parsing\n  CONVERT 'dateLastActivity' to local timezone;\n  FORMAT as 'yyyy-MM-dd HH:mm';\n  RETRIEVE execution timestamp from trigger node ('schedule1');\n\n  // 2. Basic Card Data Extraction\n  EXTRACT id, name, description, url;\n  EXTRACT list_id;\n\n  // 3. List Name Resolution\n  FIND list_name from task_list using list_id;\n\n  // 4. Label Parsing\n  EXTRACT all label names;\n  FILTER labels to find 'Shift' (checks for \"AM\" or \"PM\");\n\n  // 5. Member Role Resolution\n  EXTRACT array of member IDs attached to card;\n  FIND member with role \"SEO\" from members_list;\n  FIND member with role \"VidEd\" from members_list;\n  COMBINE names into a single array;\n\n  // 6. Construct Output Object\n  PUSH to results array:\n    - date_last_activity\n    - card identifiers (id, name, url)\n    - list details (id, name)\n    - shift information\n    - labels array\n    - member details (seo_name, vidEd_name, combined names)\n    - execution timestamp;\n\nRETURN results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4544, 4544],
+      "id": "635a955e-5ac3-4f89-bd59-dbf5fbd6b589",
+      "name": "prep data"
+    }
+  ],
+  "connections": {
+    "filter unimportant lists": {
+      "main": [
+        [
+          {
+            "node": "get all cards from lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all lists": {
+      "main": [
+        [
+          {
+            "node": "filter unimportant lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all cards from lists": {
+      "main": [
+        [
+          {
+            "node": "filter title cards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter title cards": {
+      "main": [
+        [
+          {
+            "node": "check if PM",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all activities": {
+      "main": [
+        [
+          {
+            "node": "merge card updates and activities",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "get all card updates": {
+      "main": [
+        [
+          {
+            "node": "merge card updates and activities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all new card updates": {
+      "main": [
+        [
+          {
+            "node": "merge new cards and activities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extracting data": {
+      "main": [
+        [
+          {
+            "node": "save raw data log",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "data log seo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save raw data log": {
+      "main": [
+        [
+          {
+            "node": "only return unique task and latest status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge card updates and activities": {
+      "main": [
+        [
+          {
+            "node": "merge new cards and activities",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "sort and create snapshot id for the day": {
+      "main": [
+        [
+          {
+            "node": "Wait4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "extracting data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sort and filter": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "get card info1": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "only return unique task and latest status": {
+      "main": [
+        [
+          {
+            "node": "update task repository status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update task repository status": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get logs": {
+      "main": [
+        [
+          {
+            "node": "calculate time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "raw time tracker": {
+      "main": [
+        [
+          {
+            "node": "seo time tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "calculate time": {
+      "main": [
+        [
+          {
+            "node": "raw time tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge new cards and activities": {
+      "main": [
+        [
+          {
+            "node": "check if AM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "schedule1": {
+      "main": [
+        [
+          {
+            "node": "identify shift",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get logs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get cards history1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get cards history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "identify shift": {
+      "main": [
+        [
+          {
+            "node": "get all lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter for PM": {
+      "main": [
+        [
+          {
+            "node": "sort and filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if AM": {
+      "main": [
+        [
+          {
+            "node": "sort and filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "filter for PM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check if PM": {
+      "main": [
+        [
+          {
+            "node": "prep data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get cards history": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "calculate data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get cards history1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "calculate data": {
+      "main": [
+        [
+          {
+            "node": "raw data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "raw data": {
+      "main": [
+        [
+          {
+            "node": "SEO data summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "get card info1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "get all new card updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "get all card updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait3": {
+      "main": [
+        [
+          {
+            "node": "get all activities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait4": {
+      "main": [
+        [
+          {
+            "node": "raw cards daily snapshot",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "daily snapshot seo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prep data": {
+      "main": [
+        [
+          {
+            "node": "sort and create snapshot id for the day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cadf9e947af7c573164cc8d7276a61ac5fedcd1324e7db8c350e0deb6ca4620"
+  }
+}
