@@ -50,6 +50,6 @@ The following nodes are utilized to execute this workflow:
 
 ## Business Impact
 
-- **Scalability**: Allows a single agent to manage hundreds of threads by only focusing on "HOT" or "POTENTIAL" leads flagged by the AI.
-- **Data Integrity**: Automatically cleans and truncates message history (keeping only the last 3 exchanges) to keep the database lean and relevant.
-- **Persistence**: Automatically calculates and schedules follow-up dates to ensure no lead goes cold.
+**Scalability**: Allows a single agent to manage hundreds of threads by only focusing on "HOT" or "POTENTIAL" leads flagged by the AI.
+**Data Integrity**: Automatically cleans and truncates message history (keeping only the last 3 exchanges) to keep the database lean and relevant.
+**Persistence**: Automatically calculates and schedules follow-up dates to ensure no lead goes cold.

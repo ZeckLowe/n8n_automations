@@ -1,0 +1,374 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "matchType": "allConditions",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [-192, 1840],
+      "id": "84628e16-5ed3-4754-b7d7-9ccdc6017f96",
+      "name": "get lists data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "33ed7631-6e3f-450b-a13e-225361296c9c",
+              "leftValue": "={{ $json.dueComplete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "e54781db-577b-4968-9c97-3d1c6401521c",
+              "leftValue": "={{ $json.desc }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d7197b5e-8d64-495e-b017-d29b501dbd35",
+              "leftValue": "={{ $json.idLabels }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notContains",
+                "rightType": "any"
+              }
+            },
+            {
+              "id": "7a3498bb-1445-4b46-9533-3f46ea6f31c2",
+              "leftValue": "={{ ['SCHEDULED'] }}",
+              "rightValue": "={{ $json.name }}",
+              "operator": {
+                "type": "array",
+                "operation": "notContains",
+                "rightType": "any"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [368, 1696],
+      "id": "5cbbea32-f5b9-4a0d-8639-1367f9f9c895",
+      "name": "filter for caption generation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a201b742-fa9c-4670-8ecd-2c8e4a531653",
+              "leftValue": "={{ $json.dueComplete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ab88b50b-633c-46e0-bed9-31147057e9db",
+              "leftValue": "={{ $json.idLabels }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "contains",
+                "rightType": "any"
+              }
+            },
+            {
+              "id": "cdd14502-0fb9-4d02-a1cc-de8d30de3218",
+              "leftValue": "={{ $json.badges.attachments }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "e6dcbf4f-caa2-46d1-8ab2-df75c50634bc",
+              "leftValue": "={{ $json.idLabels }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notContains",
+                "rightType": "any"
+              }
+            },
+            {
+              "id": "161531e5-9ef4-4a2e-8360-1a07700fab7d",
+              "leftValue": "={{ $json.due }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [368, 1968],
+      "id": "3d0b208a-f2b7-437c-8202-64d17ff43176",
+      "name": "filter for schedule posting"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6-23 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * 6"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-384, 1840],
+      "id": "12047695-d896-44cb-9e2d-ea5f9a1115a8",
+      "name": "schedule trigger1"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "getCards",
+        "id": "={{ $json.model_id }}",
+        "returnAll": true,
+        "additionalFields": {
+          "fields": "all"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [0, 1840],
+      "id": "c3b339aa-e75a-47aa-ba32-c13ad075bd27",
+      "name": "get all cards",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c9fc9efb-a3f7-4474-a7e7-b469d893ee7f",
+              "leftValue": "={{ $json.dueComplete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4b634ccb-80c2-4371-bc70-e6251548d499",
+              "leftValue": "={{ $json.idLabels }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notContains",
+                "rightType": "any"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [192, 1840],
+      "id": "4c584921-5b06-4b45-a2dc-58448918cbfe",
+      "name": "if card is completed"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "hRRx4Xd1CggoDHOT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [560, 1696],
+      "name": "generate caption",
+      "id": "fdbd5951-c3f5-4f4b-b92a-7958bd41484e",
+      "retryOnFail": false,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "orB15c9RzziU6yW6"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [560, 1968],
+      "name": "schedule post to fb",
+      "id": "660d265a-e491-4b2d-a96c-fdeb1f9bf035",
+      "retryOnFail": false,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "get lists data": {
+      "main": [
+        [
+          {
+            "node": "get all cards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter for caption generation": {
+      "main": [
+        [
+          {
+            "node": "generate caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter for schedule posting": {
+      "main": [
+        [
+          {
+            "node": "schedule post to fb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "schedule trigger1": {
+      "main": [
+        [
+          {
+            "node": "get lists data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all cards": {
+      "main": [
+        [
+          {
+            "node": "if card is completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if card is completed": {
+      "main": [
+        [
+          {
+            "node": "filter for caption generation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "filter for schedule posting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cadf9e947af7c573164cc8d7276a61ac5fedcd1324e7db8c350e0deb6ca4620"
+  }
+}

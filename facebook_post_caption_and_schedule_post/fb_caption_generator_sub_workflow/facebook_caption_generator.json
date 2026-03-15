@@ -1,0 +1,779 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// --- DATA PREPARATION ---\nLOAD allCards FROM input_data\nSET user_lookup_table TO [\n  ...\n]\nINITIALIZE results_list AS empty array\n\n// --- HELPER LOGIC ---\n\nFUNCTION find_name_by_id(id_to_find):\n    FOR EACH entry IN user_lookup_table:\n        IF entry[0] EQUALS id_to_find:\n            RETURN entry[1] // Found Name\n    RETURN NULL // Default if not found\n\nFUNCTION get_url_from_string(text):\n    DEFINE regex_pattern AS \"http...ending in .htm\"\n    FIND pattern IN text\n    IF pattern is found:\n        RETURN specific match\n    ELSE:\n        RETURN NULL\n\n// --- MAIN EXECUTION ---\n\nFOR EACH card IN allCards:\n    // Extract raw data\n    SET current_name TO card.json.name\n    SET current_id TO card.json.id\n    SET current_list_id TO card.json.idList\n\n    // Transform data\n    SET extracted_url TO get_url_from_string(current_name)\n    SET list_owner TO find_name_by_id(current_list_id)\n\n    // Build output structure\n    CREATE new_record WITH:\n        cardId: current_id\n        url: extracted_url\n        listName: list_owner\n\n    ADD new_record TO results_list\n\n// --- OUTPUT ---\nRETURN results_list"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [864, 2448],
+      "id": "0b387643-4b88-432b-b73a-2148a1251b31",
+      "name": "extract information"
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {
+          "maxTokensToSample": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [2384, 2624],
+      "id": "4dbae6d0-572c-407b-8436-886af646b97e",
+      "name": "llama3.1-8b",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [2384, 2912],
+      "id": "a81513bc-b5d0-454f-9606-d7ee7d8a985d",
+      "name": "allam-2-7b",
+      "credentials": {
+        "groqApi": {
+          "id": "8QRyFoxjaDABw8J5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 65
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [688, 2448],
+      "id": "d116d849-412c-4c13-b829-6a49655b2127",
+      "name": "wait 65 secs",
+      "webhookId": "113a5dbc-e5fe-43ac-ae7e-df8ead5daa62"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1056, 2448],
+      "id": "dcd175bc-84e1-4f8e-a512-6049dbcc657b",
+      "name": "extract website"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a8c40555-fbc7-4cb3-87e0-30f4dd9a229d",
+              "leftValue": "={{ $('extract information').item.json.url }}",
+              "rightValue": "specific_website",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1248, 2448],
+      "id": "5360de5c-b350-4d64-a361-0fe76310aec6",
+      "name": "if website is from specific website"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "profile_name",
+              "cssSelector": "=.woman_name"
+            },
+            {
+              "key": "profile_location",
+              "cssSelector": ".about-me p:nth-child(3)"
+            },
+            {
+              "key": "age",
+              "cssSelector": "=.about-me > p:nth-of-type(2)"
+            },
+            {
+              "key": "self_desc",
+              "cssSelector": "#moreaboutme > .panel-body > p"
+            },
+            {
+              "key": "profile_height",
+              "cssSelector": ".about-me > p:nth-of-type(3)"
+            },
+            {
+              "key": "profile_weight",
+              "cssSelector": ".about-me > p:nth-of-type(4)"
+            },
+            {
+              "key": "profile_sign",
+              "cssSelector": ".about-me > p:nth-of-type(5)"
+            },
+            {
+              "key": "profile_language",
+              "cssSelector": ".about-me > p:nth-of-type(6)"
+            },
+            {
+              "key": "profile_bmi",
+              "cssSelector": "#myprofilebasics > .panel-body"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [1456, 2336],
+      "id": "1b484b16-2a9e-49c6-8485-5cde56538bbf",
+      "name": "extract html"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "profile_name",
+              "cssSelector": "=h3.profName"
+            },
+            {
+              "key": "profile_location",
+              "cssSelector": ".profCountry "
+            },
+            {
+              "key": "profile_bmi",
+              "cssSelector": ".desktop-description"
+            },
+            {
+              "key": "self_desc",
+              "cssSelector": ".desktop-self-description"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [1536, 2544],
+      "id": "e98eff49-9019-46b7-ac20-62b8dbb0d817",
+      "name": "extract html 2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1616, 2336],
+      "id": "d5c688ee-0125-48c8-b478-3469fbd463e4",
+      "name": "structure input"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f2bf054f-d202-451b-b05f-5322a163e56d",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1856, 2448],
+      "id": "1c28e39b-4465-4178-8e8e-f867d712a019",
+      "name": "if not empty"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "id": {
+          "__rl": true,
+          "value": "={{ $('extract information').item.json.cardId }}",
+          "mode": "id"
+        },
+        "updateFields": {
+          "desc": "=No information extracted due to any of the following reasons:\n- Website is down\n- No connection\n- Domain is expired"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [2096, 2592],
+      "id": "87a600b8-5564-4e01-bb8b-a7beb2349c26",
+      "name": "return fallback",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2096, 2432],
+      "id": "f1db99c9-811b-407d-a2dc-4f02483aeaf0",
+      "name": "wait 1 min",
+      "webhookId": "85507b7c-07e6-476f-a500-373aea7a2c4c"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role\nYou are an elite Social Media Marketing Strategist specializing in high-conversion, emotionally resonant engagement. Your expertise lies in crafting authentic, \"human-first\" profiles that avoid AI-typical patterns. You write with warmth, cultural intelligence, and precision to attract high-quality, [Relationship Goal]-minded individuals.\n\nInput Data Structure\nData is provided in the following XML format:\n\n<PROFILE_DATA>\n<NAME>{{ $json.name }}</NAME>\n<LOCATION>{{ $json.location }}</LOCATION>\n<BIO>{{ $json.description }}</BIO>\n<METRICS>{{ $json.stats }}</METRICS>\n</PROFILE_DATA>\n\n<AUDIENCE_PERSONA>\n\nAge Range: [Specify Age Range]\n\nValues: [Value 1], [Value 2], stable, kind.\n\nPain Points: \n\n<SOURCE_URL>{{ $json.url }}</SOURCE_URL>\n\nTask Workflow\nStep 1 – Contextual Enrichment\nAnalyze the <LOCATION> and integrate relevant regional identifiers or culturally appropriate keywords into the caption and hashtags to enhance local authenticity.\n\nStep 2 – Narrative Crafting\nPerspective: Write in a warm, first-person voice.\n\nIntroduction: Lead with Name, Age (if within relevant range), and general Location.\n\nThe Hook: \n\nIntent:\n\nConstraints: The caption must be between 20 to 35 words. If the limit is exceeded, remove secondary adjectives to maintain the 35-word ceiling.\n\nVisuals: Use 2-3 emojis (e.g., ❤️✨) strategically to enhance the mood without cluttering the text.\n\nStep 3 – Hashtag Strategy\nGenerate exactly 6 hashtags.\n\nMix specific location-based tags with intent-based tags (e.g., #[Niche], #[Goal], #[Topic]).\n\nRestriction: Do not use non-English characters in hashtags.\n\nStep 4 – Call to Action (CTA) & Link\nEnd with a warm, inviting question or direct invitation (e.g., \"[Specific CTA Question]\", \"[Invitation]\").\n\nAppend the <SOURCE_URL> immediately after the CTA.\n\nFormatting & Constraints\nFormat: Return strictly in JSON format.\n\nCaption Limit: Max 190 characters (including emojis).\n\nNo Full Addresses: Never list street-level data; keep location to City/Region/Country.\n\nNo AI Tone: Avoid words like \"delve,\" \"tapestry,\" or overly formal corporate language.\n\nNo Hashtags in Bio: Keep the [Platform]_caption and hashtags fields separate.\n\nOutput Format (MANDATORY)\nJSON\n\n{\n\"[Platform]_caption\": \"string\",\n\"hashtags\": \"string\",\n\"cta\": \"string\",\n\"url\": \"string\"\n}\n\nCapabilities & Reminders\nTone Check: Every post must feel [Desired Emotional Tone], never transactional.\n\nPrioritize Intent: Focus more on the \"[Overarching Theme]\" than on \"[Secondary Details].\"\n\nDependency: Ensure the Location data is used to anchor the post's authenticity before finalizing the text.",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=The Strategy Brief\nThe Vibe: Are we going for \"Adventurous & Bold,\" \"Soft & Intellectual,\" or \"Playful & Witty\"?\n\nThe Story: What is one specific detail about your day or a hobby that feels uniquely you? (e.g., \"I make a mean sourdough\" or \"I'm currently training for a 10k\").\n\nThe Ideal Match: Who are we talking to? (e.g., a man who values growth, a guy who loves the outdoors, etc.).\n\nThe Location Data: Please share the <ADDRESS> or general region so I can trigger the Keyword Finder tool.\n\nHow I’ll Build Your Post\nThe Hook: A first line that stops the scroll by being relatable, not \"salesy.\"\n\nThe Middle: A \"vulnerability window\" or a playful challenge that invites a comment.\n\nThe Call to Action (CTA): A low-pressure way for the right man to start a conversation.\n\nLocal Integration: I’ll use the keywords retrieved from the tool to make the post feel like it belongs in his specific neighborhood feed."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [2272, 2432],
+      "id": "a7e1b30f-087c-488c-b164-39dc54c03387",
+      "name": "caption generator agent",
+      "retryOnFail": true,
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "maxOutputTokens": 2048,
+          "topP": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [2272, 2624],
+      "id": "4d5bcc0d-1bb0-4c53-ac28-4a85c0c88131",
+      "name": "gemini 1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "dHANXTtUJGT2419K",
+          "name": "Gemini Tier 1 1"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "maxOutputTokens": 2048,
+          "topP": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [2272, 2912],
+      "id": "71b6ac7a-52b5-46ec-ba65-b6c9fdd4c7ab",
+      "name": "gemini 2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "FUoM7LNYPcQSCG9g",
+          "name": "Gemini Czech"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "=Use this tool to ge the keyword necessary or related to the address for the facebook caption generation.",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=# Role\nYou are the Keyword Finder Tool Agent.\nYour role is to act as a specialized retrieval assistant that selects the correct region-specific sheet/tab from the external Google Sheet Keyword Knowledge Base and extracts the keywords for the Main AI Agent.\n\n# Task\n1. Receive <ADDRESS>{{ $('wait 1 min').item.json.profile_location }}</ADDRESS> from AI Agent.\n2. Match the address to the most relevant regional sheet/tab in the Google Sheet Keyword Knowledge Base.\n  - Example: \"Philippines\" → PHILIPPINES\n  - \"Singapore\" → GENERAL ASIAN\n  - If no direct match exists, choose the closest general tab.\n3. Retrieve and return the keywords from that tab.\n4. Provide the keywords in a structured, clean format (e.g., JSON array or list).\n5. For last resort if no sheet is related to the location. then use 'GENERAL'\n\n# Output\n- Return only the extracted keywords.\n- Do not generate captions, engagement text, or hashtags.\n- Example output:\n{\n  \"region\": \"PHILIPPINES\",\n  \"keywords\": [\"real estate investment\", \"condo in Manila\", \"affordable housing\", \"Philippines property market\"]\n}\n\n# Constraints\n- Never generate or invent keywords. Only use what exists in the sheet.\n- Do not attempt to create captions, hashtags, or engagement text.\n- Always select the most relevant tab. Never pick randomly.\n- Remain focused solely on keyword retrieval.\n\n# Capabilities & Reminders\n- You have access to the external Google Sheet Keyword Knowledge Base in the tools. Always use it effectively.\n- Each sheet/tab corresponds to a specific region.\n- You can intelligently match <ADDRESS> to the closest region.\n- Your only purpose is to return keywords for the Main AI Agent, which will handle creative integration.\n- Always ensure the output is structured and unambiguous so it can be consumed by the Main AI Agent."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [2272, 2752],
+      "id": "d1962d64-82f3-41ec-a45e-a54b7dfcac28",
+      "name": "keyword retriever agent"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"facebook_caption\": \"string\",\n  \"hashtags\": \"string\",\n  \"cta\": \"string\",\n  \"url\": \"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [2496, 2624],
+      "id": "dd81ee9a-d459-4e4e-b89e-ce436b072e06",
+      "name": "structured output parser1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "13dc5e73-7af5-4ced-a969-a2a18c6ce98c",
+              "leftValue": "={{ $json.output.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "feeb7c5d-60e1-42c7-b5b0-021e99f749b9",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2624, 2432],
+      "id": "a454bb52-36e1-403a-8eed-2f2aefe2cb15",
+      "name": "if no error"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "052f5cea-27ee-431f-a258-689b4f16e7ec",
+              "name": "caption",
+              "value": "={{ $json.output.facebook_caption }}",
+              "type": "string"
+            },
+            {
+              "id": "189f710a-fc19-48cd-a45f-8eb1baebb16d",
+              "name": "hashtags",
+              "value": "={{ $json.output.hashtags }}",
+              "type": "string"
+            },
+            {
+              "id": "b688d819-28ba-4397-9bd7-11358b42db98",
+              "name": "label",
+              "value": "=123456",
+              "type": "string"
+            },
+            {
+              "id": "1f85cf06-56db-41e1-a60e-f61f93f0b22f",
+              "name": "url",
+              "value": "={{ ($json.output.url) }}",
+              "type": "string"
+            },
+            {
+              "id": "cea7454f-b263-4578-a789-f38b2af67c26",
+              "name": "cta",
+              "value": "={{ $json.output.cta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2832, 2416],
+      "id": "8aeedbcc-7afd-4579-a154-bc290fee317f",
+      "name": "structure input1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "id": {
+          "__rl": true,
+          "value": "={{ $('extract information').item.json.cardId }}",
+          "mode": "id"
+        },
+        "updateFields": {
+          "desc": "={{ $json.caption }}\n\n{{ $json.cta }} {{ $json.url }}\n\n'{{ $json.hashtags }}",
+          "idLabels": "={{ $json.label }}"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [3008, 2416],
+      "id": "761a8a0f-bc26-4d98-9f0a-6a1726c9dcc7",
+      "name": "update content",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2832, 2608],
+      "id": "fb1d45b4-578a-43b2-8cbe-0977179b53c6",
+      "name": "wait 1 min1",
+      "webhookId": "a4673a37-530a-4f3e-95a5-eb718b7b0dd8"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [2528, 2912],
+      "id": "6bd6ed4f-eee3-4394-a742-852dc9f1f5e8",
+      "name": "keywords",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3008, 2608],
+      "id": "f47fa2d2-31ff-4a86-a62b-bcead0a8437b",
+      "name": "log record2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "extract information": {
+      "main": [
+        [
+          {
+            "node": "extract website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "llama3.1-8b": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "caption generator agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "allam-2-7b": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "keyword retriever agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "wait 65 secs": {
+      "main": [
+        [
+          {
+            "node": "extract information",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract website": {
+      "main": [
+        [
+          {
+            "node": "if website is from specific website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if website is from specific website": {
+      "main": [
+        [
+          {
+            "node": "extract html",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "extract html 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract html": {
+      "main": [
+        [
+          {
+            "node": "structure input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract html 2": {
+      "main": [
+        [
+          {
+            "node": "if not empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structure input": {
+      "main": [
+        [
+          {
+            "node": "if not empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if not empty": {
+      "main": [
+        [
+          {
+            "node": "wait 1 min",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "return fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait 1 min": {
+      "main": [
+        [
+          {
+            "node": "caption generator agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "caption generator agent": {
+      "main": [
+        [
+          {
+            "node": "if no error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "caption generator agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "keyword retriever agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "keyword retriever agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "caption generator agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structured output parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "caption generator agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if no error": {
+      "main": [
+        [
+          {
+            "node": "structure input1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structure input1": {
+      "main": [
+        [
+          {
+            "node": "update content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update content": {
+      "main": [
+        [
+          {
+            "node": "wait 1 min1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait 1 min1": {
+      "main": [
+        [
+          {
+            "node": "log record2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "keywords": {
+      "ai_tool": [
+        [
+          {
+            "node": "keyword retriever agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cadf9e947af7c573164cc8d7276a61ac5fedcd1324e7db8c350e0deb6ca4620"
+  }
+}

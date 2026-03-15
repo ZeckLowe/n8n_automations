@@ -1,0 +1,716 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "=",
+        "edge": "feed",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "message",
+                "value": "="
+              },
+              {
+                "name": "attached_media",
+                "value": "="
+              },
+              {
+                "name": "scheduled_publish_time",
+                "value": "="
+              },
+              {
+                "name": "access_token",
+                "value": "="
+              },
+              {
+                "name": "published",
+                "value": "={{ false }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [80, 2800],
+      "id": "70f80ab3-c90e-411f-b263-6d1cd59299fa",
+      "name": "Schedules the post",
+      "alwaysOutputData": true,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "COOAhbCcMrlKvLVh",
+          "name": "dummy"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [-688, 2592],
+      "id": "08badbbe-0e3c-4a34-9078-1c4c896f54ed",
+      "name": "get fb page token"
+    },
+    {
+      "parameters": {
+        "jsCode": "### PSUDOCODE: Social Media Post Formatting Utility\n\nDEFINE FUNCTION GetValueFromMap(DataSource, SearchKey):\n    ITERATE through DataSource:\n        IF entry matches SearchKey:\n            RETURN associated value\n    RETURN NULL\n\nDEFINE FUNCTION FormatContent(RawString):\n    INITIALIZE CleanedString as RawString\n    INITIALIZE TargetURL as EMPTY\n\n    // HANDLE LINK EXTRACTION\n    IF RawString contains Markdown Link Syntax:\n        EXTRACT URL from parentheses\n        REPLACE Markdown syntax with the raw URL in CleanedString\n    ELSE IF RawString contains Plain URL:\n        EXTRACT URL as TargetURL\n        REMOVE metadata/formatting artifacts (e.g., \"smartCard\")\n\n    // DATA CLEANUP\n    REPLACE escaped characters (e.g., \"\\#\") with standard characters\n    TRIM whitespace from CleanedString\n\n    RETURN [CleanedString, TargetURL]\n\n// --- MAIN EXECUTION ---\nINITIALIZE OutputList as EMPTY\nFETCH InputItems from Source\n\nFOR EACH Item in InputItems:\n    EXTRACT Description and CategoryID\n    \n    // PROCESS DATA\n    SET [FinalCaption, FinalURL] = CALL FormatContent(Description)\n    SET CategoryName = CALL GetValueFromMap(CategoryList, CategoryID)\n\n    // CONSTRUCT OUTPUT\n    CREATE Object with { FinalCaption, FinalURL, CategoryName }\n    ADD Object to OutputList\n\nRETURN OutputList"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1648, 2608],
+      "id": "d7976215-4297-44c6-985b-a5843aac6ea3",
+      "name": "extract information1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ca3b8df4-a422-4ef9-85d3-9c181a450958",
+              "leftValue": "={{ $json.due }}",
+              "rightValue": "={{ $now }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "afterOrEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1840, 2624],
+      "id": "d92dd86b-7f57-43da-ac91-542c98f1e85e",
+      "name": "if date valid"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "235f266e-b457-4db4-9d5e-0b75c034b31d",
+              "name": "execution_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c62a22c5-f9a9-4bb4-91dc-e0004d29e64b",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "08c9d737-a5af-4a3f-bbfc-83eb6eff41c4",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            },
+            {
+              "id": "d7048ea2-405d-41c7-8c38-1f4ff1196f57",
+              "name": "node",
+              "value": "IF",
+              "type": "string"
+            },
+            {
+              "id": "98e55c14-a435-454b-8722-ba147f36b204",
+              "name": "error_code",
+              "value": "400",
+              "type": "string"
+            },
+            {
+              "id": "ca653868-a876-4488-b2a3-907b8226c027",
+              "name": "error",
+              "value": "`\"invalid_request\" \"(#100) The specified scheduled publish time is invalid.\"` - The date should not be past",
+              "type": "string"
+            },
+            {
+              "id": "77eded2f-ffba-47c5-8490-1caa6505d91f",
+              "name": "error_id",
+              "value": "0001",
+              "type": "string"
+            },
+            {
+              "id": "049aa589-7557-4c0b-95bd-4eb3ce4b9eea",
+              "name": "trello_card_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1648, 2752],
+      "id": "2ce6047d-be50-470c-9695-2c1be1470585",
+      "name": "write error message"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Invalid Scheduled Date"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [-1456, 2752],
+      "id": "cc28e307-2efa-40d1-bc4a-d6badb85be37",
+      "name": "stop workflow and error"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-1264, 2608],
+      "id": "10ebebab-c7b9-454f-9dc0-2e9c1aae21b2",
+      "name": "loop over items1"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.trello.com/1/cards/{{ $('main workflow').item.json.id }}/attachments/{{ $json.id }}/download/{{ $json.fileName }}",
+        "sendHeaders": true,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1056, 2752],
+      "id": "3922576f-1221-447c-b774-745c2fc9ff57",
+      "name": "fetch attachments as binary"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "78e403ad-f72a-4476-b06a-871faab7fd47",
+              "name": "profile",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "727e512e-3c37-4181-bd9e-c8bbcec1be22",
+              "name": "FullPostMessage",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "02527581-c3fc-4e42-8156-6dad74e86e0b",
+              "name": "card_id",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "700d5008-7fda-4d5b-b42e-ca56e274ac91",
+              "name": "base_website_url",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "a4de6240-ed7e-43cf-ac73-dd50c88f9f5d",
+              "name": "due_date",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "afaeaefa-d724-4732-9866-e543f9227b7d",
+              "name": "due_time",
+              "value": "=",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "=$binary",
+        "options": {
+          "ignoreConversionErrors": false
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1056, 2592],
+      "id": "238d0fc3-78f7-43dc-9778-5690e2b430bc",
+      "name": "format input data",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-688, 2800],
+      "id": "5a7ee6ae-9622-4817-9020-e3e347332c6f",
+      "name": "merge input data and token"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v23.0",
+        "node": "=",
+        "edge": "=photos",
+        "sendBinaryData": true,
+        "binaryPropertyName": "=",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "caption",
+                "value": "="
+              },
+              {
+                "name": "access_token",
+                "value": "="
+              },
+              {
+                "name": "published",
+                "value": "={{ false }}"
+              },
+              {
+                "name": "temporary",
+                "value": "={{ true }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [-512, 2800],
+      "id": "751dc9b5-db6d-46c1-8b5f-f2dec62817e2",
+      "name": "upload pictures",
+      "executeOnce": false,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "COOAhbCcMrlKvLVh",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0a70a7be-1542-42b2-867b-f4da3540be31",
+              "name": "data",
+              "value": "={\"media_fbid\":\"{{ $json.id }}\"}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-336, 2800],
+      "id": "e6663c20-6cd8-4cc4-99d4-68b45f698c21",
+      "name": "collect the id of photos"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [-144, 2800],
+      "id": "46cc47fc-5ed9-48ec-8e99-076b7d300e25",
+      "name": "convert ids into one list"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "259b28b2-d3ca-40c0-b2f4-120416f2688d",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-688, 3008],
+      "id": "92e204ac-9c3b-4800-83c7-d4cc1e2b295b",
+      "name": "if not error"
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "addLabel",
+        "cardId": {
+          "__rl": true,
+          "value": "=",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [-512, 2992],
+      "id": "e891c634-a027-45ee-9b55-62f14a949992",
+      "name": "add label to card",
+      "executeOnce": true,
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "errorMessage": "Sheduled Post in FB failed!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [-512, 3152],
+      "id": "e4d07712-0d46-4602-b5ee-f2f8341c7feb",
+      "name": "stop workflow and error1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [-880, 2592],
+      "id": "586f22ab-f342-445c-ba67-f2890bb1153d",
+      "name": "get the page name",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1JWnmXxuQwctJzQ_CirAnUgRPEn40MgTnHFp0itfE9y4",
+          "mode": "list",
+          "cachedResultName": "FB Ladies Posting Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JWnmXxuQwctJzQ_CirAnUgRPEn40MgTnHFp0itfE9y4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "social_media_links",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JWnmXxuQwctJzQ_CirAnUgRPEn40MgTnHFp0itfE9y4/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Websites",
+              "lookupValue": "={{ $json.base_website_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [-336, 2992],
+      "id": "a0dbc92f-7650-4af5-91ae-dbd2cddb6608",
+      "name": "get the page name1",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QAVCLv15YizfQ923",
+          "name": "dummy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "attachment",
+        "cardId": {
+          "__rl": true,
+          "value": "={{ $('main workflow').item.json.id }}",
+          "mode": "id"
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [-1456, 2608],
+      "id": "7cdd1c78-ec2f-4a36-b85b-08a724bd6f40",
+      "name": "get many attachments1",
+      "credentials": {
+        "trelloApi": {
+          "id": "ZcETB9amygBG1HVn",
+          "name": "dummy"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedules the post": {
+      "main": [
+        [
+          {
+            "node": "if not error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get fb page token": {
+      "main": [
+        [
+          {
+            "node": "merge input data and token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract information1": {
+      "main": [
+        [
+          {
+            "node": "get many attachments1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if date valid": {
+      "main": [
+        [
+          {
+            "node": "extract information1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "write error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "write error message": {
+      "main": [
+        [
+          {
+            "node": "stop workflow and error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop over items1": {
+      "main": [
+        [
+          {
+            "node": "format input data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "fetch attachments as binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch attachments as binary": {
+      "main": [
+        [
+          {
+            "node": "loop over items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format input data": {
+      "main": [
+        [
+          {
+            "node": "merge input data and token",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "get the page name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge input data and token": {
+      "main": [
+        [
+          {
+            "node": "upload pictures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload pictures": {
+      "main": [
+        [
+          {
+            "node": "collect the id of photos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "collect the id of photos": {
+      "main": [
+        [
+          {
+            "node": "convert ids into one list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "convert ids into one list": {
+      "main": [
+        [
+          {
+            "node": "Schedules the post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if not error": {
+      "main": [
+        [
+          {
+            "node": "add label to card",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "stop workflow and error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add label to card": {
+      "main": [
+        [
+          {
+            "node": "get the page name1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get the page name": {
+      "main": [
+        [
+          {
+            "node": "get fb page token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get many attachments1": {
+      "main": [
+        [
+          {
+            "node": "loop over items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cadf9e947af7c573164cc8d7276a61ac5fedcd1324e7db8c350e0deb6ca4620"
+  }
+}
